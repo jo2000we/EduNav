@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}Zielsetzung VG{% endblock %}
+{% block content %}
+<div x-data="goalCoach()" class="space-y-4">
+    <div id="chat" class="space-y-2 border p-2 rounded h-64 overflow-y-auto"></div>
+    <form :hx-post="goalId ? '/api/vg/coach/next/' : '/api/vg/goals/'"
+          hx-swap="none"
+          @htmx:afterRequest="handleResponse"
+          class="flex flex-col sm:flex-row gap-2">
+        <input type="hidden" name="user_session" value="{{ user_session_id }}" x-show="!goalId">
+        <input type="hidden" name="goal_id" :value="goalId" x-show="goalId">
+        <textarea x-model="message" class="flex-1 border p-2" placeholder="Deine Nachricht..."></textarea>
+        <input type="hidden" name="raw_text" :value="message" x-show="!goalId">
+        <input type="hidden" name="user_reply" :value="message" x-show="goalId">
+        <button class="bg-blue-500 text-white px-4 py-2 sm:self-start">Senden</button>
+    </form>
+    <div class="flex flex-wrap gap-2 text-xs">
+        <template x-for="(val, key) in smart" :key="key">
+            <span class="px-2 py-1 rounded" :class="val ? 'bg-green-200' : 'bg-gray-200'" x-text="key"></span>
+        </template>
+    </div>
+</div>
+<script>
+function goalCoach(){
+    return {
+        message:'',
+        goalId:null,
+        smart:{specific:false, measurable:false, achievable:false, relevant:false, time_bound:false},
+        handleResponse(e){
+            let data = {};
+            try { data = JSON.parse(e.detail.xhr.responseText); } catch(err){}
+            if(!this.goalId && data.id){ this.goalId = data.id; }
+            if(this.message){ this.addMessage('user', this.message); }
+            if(data.assistant_text){ this.addMessage('assistant', data.assistant_text); }
+            if(data.smart_status){ this.smart = data.smart_status; }
+            this.message='';
+        },
+        addMessage(role,text){
+            const chat = document.getElementById('chat');
+            const div = document.createElement('div');
+            div.className = role==='assistant'? 'text-blue-700' : 'text-gray-700 text-right';
+            div.textContent = text;
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+        }
+    }
+}
+</script>
+{% endblock %}

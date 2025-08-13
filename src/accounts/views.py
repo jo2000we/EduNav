@@ -45,6 +45,30 @@ def dashboard(request):
     return render(request, "dashboard.html", {"user": request.user, "user_session_id": user_session.id})
 
 
+@login_required
+def goal_vg_page(request):
+    today = timezone.now().date()
+    lesson, _ = LessonSession.objects.get_or_create(date=today)
+    user_session, _ = UserSession.objects.get_or_create(user=request.user, lesson_session=lesson)
+    return render(request, "goal_vg.html", {"user_session_id": user_session.id})
+
+
+@login_required
+def goal_kg_page(request):
+    today = timezone.now().date()
+    lesson, _ = LessonSession.objects.get_or_create(date=today)
+    user_session, _ = UserSession.objects.get_or_create(user=request.user, lesson_session=lesson)
+    return render(request, "goal_kg.html", {"user_session_id": user_session.id})
+
+
+@login_required
+def reflection_page(request):
+    today = timezone.now().date()
+    lesson, _ = LessonSession.objects.get_or_create(date=today)
+    user_session, _ = UserSession.objects.get_or_create(user=request.user, lesson_session=lesson)
+    return render(request, "reflection.html", {"user_session_id": user_session.id})
+
+
 def login_page(request):
     if request.method == "POST":
         serializer = LoginSerializer(data=request.POST)
