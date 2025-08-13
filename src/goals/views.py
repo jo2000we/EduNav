@@ -73,9 +73,13 @@ class GoalFinalizeView(APIView):
     def post(self, request):
         goal_id = request.data.get("goal_id")
         goal = get_object_or_404(Goal, id=goal_id)
-        last_user = goal.interactions.filter(role="user").order_by("-turn").first()
-        final_text = last_user.content if last_user else goal.raw_text
+        coach = AiCoach()
+        final_text = coach.finalize(goal)
+        turn = goal.interactions.count() + 1
+        KIInteraction.objects.create(goal=goal, turn=turn, role="assistant", content=final_text)
         goal.final_text = final_text
         goal.finalized_at = timezone.now()
+        topic = goal.user_session.lesson_session.topic
+        goal.smart_score = evaluate_smart(final_text, topic)
         goal.save()
         return Response(GoalSerializer(goal).data)
