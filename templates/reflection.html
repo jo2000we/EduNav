@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}Reflexion{% endblock %}
+{% block content %}
+<div x-data="{submitted:false}">
+    <form x-show="!submitted" hx-post="/api/reflections/" hx-swap="none" @htmx:afterRequest="submitted=true" class="space-y-2">
+        <input type="hidden" name="user_session" value="{{ user_session_id }}">
+        <textarea name="result" class="w-full border p-2" placeholder="Was hast du erreicht?"></textarea>
+        <textarea name="obstacles" class="w-full border p-2" placeholder="Welche Hindernisse gab es?"></textarea>
+        <textarea name="next_step" class="w-full border p-2" placeholder="Was ist dein nächster Schritt?"></textarea>
+        <button class="bg-blue-500 text-white px-4 py-2 w-full sm:w-auto">Reflexion speichern</button>
+    </form>
+    <div x-show="submitted" class="p-4 bg-green-100 rounded">Danke für deine Reflexion!</div>
+</div>
+{% endblock %}

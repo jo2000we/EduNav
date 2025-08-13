@@ -15,12 +15,21 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from accounts.views import login_page, dashboard
+from accounts.views import (
+    login_page,
+    dashboard,
+    goal_vg_page,
+    goal_kg_page,
+    reflection_page,
+)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", login_page, name="login"),
     path("dashboard/", dashboard, name="dashboard"),
+    path("goal/vg/", goal_vg_page, name="goal_vg"),
+    path("goal/kg/", goal_kg_page, name="goal_kg"),
+    path("reflection/", reflection_page, name="reflection"),
     path("api/", include("accounts.urls")),
     path("api/", include("lessons.urls")),
     path("api/", include("goals.urls")),
