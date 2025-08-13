@@ -72,21 +72,29 @@ class AiCoach:
 
     def finalize(self, goal) -> str:
         score = goal.smart_score or {}
-        missing = [c for c in ["specific", "measurable", "achievable", "relevant", "time_bound"] if not score.get(c)]
+        missing = [
+            c
+            for c in ["specific", "measurable", "achievable", "relevant", "time_bound"]
+            if not score.get(c)
+        ]
         conversation = self._conversation(goal)
         mapping = {
-            "specific": "konkreter", "measurable": "messbar", "achievable": "realistischer",
-            "relevant": "relevanter zum Thema", "time_bound": "zeitlich klarer",
+            "specific": "konkreter",
+            "measurable": "messbarer",
+            "achievable": "realistischer",
+            "relevant": "relevanter zum Thema",
+            "time_bound": "zeitlich klarer",
         }
         if missing:
             miss_text = ", ".join(mapping[c] for c in missing)
             prompt = (
                 f"{SMART_PROMPT}\n{conversation}\n"
-                f"Schlage eine kurze Verbesserung vor, damit das Ziel {miss_text} wird."
+                "Formuliere daraus ein finales SMART-Ziel in weniger als 25 Wörtern. "
+                f"Es soll {miss_text} sein."
             )
         else:
             prompt = (
                 f"{SMART_PROMPT}\n{conversation}\n"
-                "Bestätige knapp, dass dieses Ziel SMART ist, und frage nach der Bestätigung zur Finalisierung."
+                "Formuliere daraus ein finales SMART-Ziel in weniger als 25 Wörtern."
             )
         return self.ask(prompt)
