@@ -1,19 +1,35 @@
 from __future__ import annotations
 
 import csv
+import json
+import uuid
+from datetime import datetime
 from io import StringIO, BytesIO
 from django.http import HttpResponse
 from django.contrib.admin.views.decorators import staff_member_required
 from django.utils.decorators import method_decorator
 from django.views import View
+from django.utils.dateparse import parse_date
+from django.utils import timezone
+from django.contrib.auth import get_user_model
 
 from goals.models import Goal, KIInteraction
 from reflections.models import Reflection, Note
 
 
-def build_dataset():
+def build_dataset(from_date=None, to_date=None, klass=None, group=None):
+    qs = Goal.objects.select_related("user_session__user", "user_session__lesson_session")
+    if from_date:
+        qs = qs.filter(user_session__lesson_session__date__gte=from_date)
+    if to_date:
+        qs = qs.filter(user_session__lesson_session__date__lte=to_date)
+    if klass:
+        qs = qs.filter(user_session__user__klassengruppe=klass)
+    if group:
+        qs = qs.filter(user_session__user__gruppe=group)
+    goals = list(qs)
     rows = []
-    for goal in Goal.objects.select_related("user_session__user", "user_session__lesson_session"):
+    for goal in goals:
         user = goal.user_session.user
         lesson = goal.user_session.lesson_session
         reflection = Reflection.objects.filter(goal=goal).first()
@@ -42,13 +58,17 @@ def build_dataset():
             "notes_count": notes_count,
             "ki_turns": ki_turns,
         })
-    return rows
+    return rows, goals
 
 
 @method_decorator(staff_member_required, name="dispatch")
 class ExportCSVView(View):
     def get(self, request):
-        rows = build_dataset()
+        from_date = parse_date(request.GET.get("from")) if request.GET.get("from") else None
+        to_date = parse_date(request.GET.get("to")) if request.GET.get("to") else None
+        klass = request.GET.get("class")
+        group = request.GET.get("group")
+        rows, _ = build_dataset(from_date, to_date, klass, group)
         output = StringIO()
         writer = csv.DictWriter(output, fieldnames=rows[0].keys() if rows else [])
         writer.writeheader()
@@ -67,14 +87,113 @@ except Exception:  # pragma: no cover - dependency optional
 @method_decorator(staff_member_required, name="dispatch")
 class ExportXLSXView(View):
     def get(self, request):
-        rows = build_dataset()
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.append(list(rows[0].keys()) if rows else [])
+        from_date = parse_date(request.GET.get("from")) if request.GET.get("from") else None
+        to_date = parse_date(request.GET.get("to")) if request.GET.get("to") else None
+        klass = request.GET.get("class")
+        group = request.GET.get("group")
+        rows, goals = build_dataset(from_date, to_date, klass, group)
+        exported_at = timezone.now().isoformat()
         for row in rows:
-            ws.append(list(row.values()))
+            row["exported_at"] = exported_at
+
+        User = get_user_model()
+        user_ids = {g.user_session.user_id for g in goals}
+        users = User.objects.filter(id__in=user_ids)
+        user_rows = [
+            {
+                "id": u.id,
+                "pseudonym": u.pseudonym,
+                "klassengruppe": u.klassengruppe,
+                "gruppe": u.gruppe,
+                "created_at": u.created_at,
+                "exported_at": exported_at,
+            }
+            for u in users
+        ]
+
+        goal_rows = [
+            {
+                "id": g.id,
+                "user_session": g.user_session_id,
+                "raw_text": g.raw_text,
+                "final_text": g.final_text,
+                "smart_score": json.dumps(g.smart_score) if g.smart_score is not None else None,
+                "created_at": g.created_at,
+                "finalized_at": g.finalized_at,
+                "exported_at": exported_at,
+            }
+            for g in goals
+        ]
+
+        goal_ids = [g.id for g in goals]
+        user_session_ids = [g.user_session_id for g in goals]
+
+        reflection_rows = [
+            {
+                "id": r.id,
+                "user_session": r.user_session_id,
+                "goal": r.goal_id,
+                "result": r.result,
+                "obstacles": r.obstacles,
+                "next_step": r.next_step,
+                "next_step_source": r.next_step_source,
+                "created_at": r.created_at,
+                "exported_at": exported_at,
+            }
+            for r in Reflection.objects.filter(goal_id__in=goal_ids)
+        ]
+
+        ki_rows = [
+            {
+                "id": k.id,
+                "goal": k.goal_id,
+                "turn": k.turn,
+                "role": k.role,
+                "content": k.content,
+                "created_at": k.created_at,
+                "exported_at": exported_at,
+            }
+            for k in KIInteraction.objects.filter(goal_id__in=goal_ids)
+        ]
+
+        note_rows = [
+            {
+                "id": n.id,
+                "user_session": n.user_session_id,
+                "content": n.content,
+                "created_at": n.created_at,
+                "exported_at": exported_at,
+            }
+            for n in Note.objects.filter(user_session_id__in=user_session_ids)
+        ]
+
+        wb = openpyxl.Workbook()
+        wb.remove(wb.active)
+
+        def write_sheet(name, data):
+            ws = wb.create_sheet(title=name)
+            if data:
+                ws.append(list(data[0].keys()))
+                for row in data:
+                    ws.append([
+                        v.isoformat() if isinstance(v, datetime)
+                        else str(v) if isinstance(v, uuid.UUID)
+                        else v
+                        for v in row.values()
+                    ])
+
+        write_sheet("Users", user_rows)
+        write_sheet("Goals", goal_rows)
+        write_sheet("Reflections", reflection_rows)
+        write_sheet("KIInteractions", ki_rows)
+        write_sheet("Notes", note_rows)
+        write_sheet("flat_dataset", rows)
+
         output = BytesIO()
         wb.save(output)
-        resp = HttpResponse(output.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        resp = HttpResponse(
+            output.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
         resp['Content-Disposition'] = 'attachment; filename="export.xlsx"'
         return resp
