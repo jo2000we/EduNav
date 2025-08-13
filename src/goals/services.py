@@ -49,3 +49,44 @@ class AiCoach:
             return resp.output[0].content[0].text.strip()
         except OpenAIError:
             return "(Fehler bei KI) Bitte versuche es erneut."
+
+    def _conversation(self, goal) -> str:
+        return "\n".join(i.content for i in goal.interactions.order_by("turn"))
+
+    def ask_next(self, goal) -> str:
+        score = goal.smart_score or {}
+        missing = [c for c in ["specific", "measurable", "achievable", "relevant", "time_bound"] if not score.get(c)]
+        conversation = self._conversation(goal)
+        if not missing:
+            return self.finalize(goal)
+        mapping = {
+            "specific": "konkreter", "measurable": "messbar", "achievable": "realistisch",
+            "relevant": "relevant zum Thema", "time_bound": "zeitlich begrenzt",
+        }
+        crit = mapping[missing[0]]
+        prompt = (
+            f"{SMART_PROMPT}\n{conversation}\n"
+            f"Frage den Lernenden gezielt, damit das Ziel {crit} wird."
+        )
+        return self.ask(prompt)
+
+    def finalize(self, goal) -> str:
+        score = goal.smart_score or {}
+        missing = [c for c in ["specific", "measurable", "achievable", "relevant", "time_bound"] if not score.get(c)]
+        conversation = self._conversation(goal)
+        mapping = {
+            "specific": "konkreter", "measurable": "messbar", "achievable": "realistischer",
+            "relevant": "relevanter zum Thema", "time_bound": "zeitlich klarer",
+        }
+        if missing:
+            miss_text = ", ".join(mapping[c] for c in missing)
+            prompt = (
+                f"{SMART_PROMPT}\n{conversation}\n"
+                f"Schlage eine kurze Verbesserung vor, damit das Ziel {miss_text} wird."
+            )
+        else:
+            prompt = (
+                f"{SMART_PROMPT}\n{conversation}\n"
+                "Bestätige knapp, dass dieses Ziel SMART ist, und frage nach der Bestätigung zur Finalisierung."
+            )
+        return self.ask(prompt)

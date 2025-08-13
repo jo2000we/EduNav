@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404
 
 from .models import Goal, KIInteraction
 from .serializers import GoalSerializer
-from .services import evaluate_smart, AiCoach, SMART_PROMPT
+from .services import evaluate_smart, AiCoach
 from .permissions import IsVGUser
 from lessons.models import UserSession
 
@@ -20,7 +20,8 @@ class GoalCreateKGView(generics.CreateAPIView):
         goal = serializer.save()
         goal.final_text = goal.raw_text
         goal.finalized_at = timezone.now()
-        goal.smart_score = evaluate_smart(goal.raw_text)
+        topic = goal.user_session.lesson_session.topic
+        goal.smart_score = evaluate_smart(goal.raw_text, topic)
         goal.save()
 
 
@@ -30,7 +31,8 @@ class GoalCreateVGView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         goal = serializer.save()
-        goal.smart_score = evaluate_smart(goal.raw_text)
+        topic = goal.user_session.lesson_session.topic
+        goal.smart_score = evaluate_smart(goal.raw_text, topic)
         goal.save()
         KIInteraction.objects.create(goal=goal, turn=1, role="user", content=goal.raw_text)
 
@@ -42,17 +44,26 @@ class CoachNextView(APIView):
         goal_id = request.data.get("goal_id")
         user_reply = request.data.get("user_reply")
         goal = get_object_or_404(Goal, id=goal_id)
+        topic = goal.user_session.lesson_session.topic
         turn = goal.interactions.count() + 1
         coach = AiCoach()
         if user_reply:
             KIInteraction.objects.create(goal=goal, turn=turn, role="user", content=user_reply)
-            goal.smart_score = evaluate_smart(user_reply)
+            goal.smart_score = evaluate_smart(user_reply, topic)
             goal.save()
             turn += 1
-        prompt = SMART_PROMPT + "\n" + "\n".join(i.content for i in goal.interactions.order_by("turn"))
-        answer = coach.ask(prompt)
+        score = goal.smart_score or {}
+        missing = [c for c in ["specific", "measurable", "achievable", "relevant", "time_bound"] if not score.get(c)]
+        if not missing:
+            answer = coach.finalize(goal)
+            status_flag = "ready_to_finalize"
+        elif len(missing) == 1:
+            answer = coach.finalize(goal)
+            status_flag = "suggestion"
+        else:
+            answer = coach.ask_next(goal)
+            status_flag = "question"
         KIInteraction.objects.create(goal=goal, turn=turn, role="assistant", content=answer)
-        status_flag = "ready" if goal.smart_score and goal.smart_score.get("score", 0) >= 4 else "question"
         return Response({"assistant_text": answer, "message_type": status_flag, "smart_status": goal.smart_score})
 
 
