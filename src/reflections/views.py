@@ -9,7 +9,7 @@ from .models import Reflection, Note
 from .serializers import ReflectionSerializer, NoteSerializer
 from goals.permissions import IsVGUser
 from goals.models import Goal
-from goals.services import AiCoach
+from goals.services import suggest_next_steps
 
 
 class ReflectionCreateView(generics.CreateAPIView):
@@ -29,8 +29,21 @@ class NextStepSuggestView(APIView):
         goal_id = request.data.get("goal_id")
         obstacles = request.data.get("obstacles", "")
         goal = get_object_or_404(Goal, id=goal_id)
-        coach = AiCoach()
-        prompt = f"Ziel: {goal.final_text}\nHindernisse: {obstacles}\nGib drei kurze nächste Schritte."
-        answer = coach.ask(prompt)
-        suggestions = [s.strip() for s in answer.split('\n') if s.strip()][:3]
+        selected = request.data.get("selected")
+
+        if selected:
+            data = {
+                "user_session": request.data.get("user_session"),
+                "goal": goal_id,
+                "result": request.data.get("result"),
+                "obstacles": obstacles,
+                "next_step": selected,
+                "next_step_source": "ai",
+            }
+            serializer = ReflectionSerializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=201)
+
+        suggestions = suggest_next_steps(goal, obstacles)
         return Response({"suggestions": suggestions})
