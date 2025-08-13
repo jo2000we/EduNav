@@ -49,19 +49,23 @@ class CoachNextView(APIView):
         coach = AiCoach()
         if user_reply:
             KIInteraction.objects.create(goal=goal, turn=turn, role="user", content=user_reply)
-            goal.smart_score = evaluate_smart(user_reply, topic)
-            goal.save()
             turn += 1
-        score = goal.smart_score or {}
-        missing = [c for c in ["specific", "measurable", "achievable", "relevant", "time_bound"] if not score.get(c)]
-        if not missing:
-            answer = coach.finalize(goal)
+        conversation = "\n".join(i.content for i in goal.interactions.order_by("turn"))
+        result = evaluate_smart(conversation, topic)
+        goal.smart_score = {k: result[k] for k in [
+            "specific",
+            "measurable",
+            "achievable",
+            "relevant",
+            "time_bound",
+            "score",
+        ]}
+        goal.save()
+        if result["score"] == 5:
+            answer = coach.finalize(goal, topic)
             status_flag = "ready_to_finalize"
-        elif len(missing) == 1:
-            answer = coach.finalize(goal)
-            status_flag = "suggestion"
         else:
-            answer = coach.ask_next(goal)
+            answer = result.get("question")
             status_flag = "question"
         KIInteraction.objects.create(goal=goal, turn=turn, role="assistant", content=answer)
         return Response({"assistant_text": answer, "message_type": status_flag, "smart_status": goal.smart_score})
@@ -74,12 +78,12 @@ class GoalFinalizeView(APIView):
         goal_id = request.data.get("goal_id")
         goal = get_object_or_404(Goal, id=goal_id)
         coach = AiCoach()
-        final_text = coach.finalize(goal)
+        topic = goal.user_session.lesson_session.topic
+        final_text = coach.finalize(goal, topic)
         turn = goal.interactions.count() + 1
         KIInteraction.objects.create(goal=goal, turn=turn, role="assistant", content=final_text)
         goal.final_text = final_text
         goal.finalized_at = timezone.now()
-        topic = goal.user_session.lesson_session.topic
         goal.smart_score = evaluate_smart(final_text, topic)
         goal.save()
         return Response(GoalSerializer(goal).data)
