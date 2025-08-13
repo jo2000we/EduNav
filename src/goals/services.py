@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List
 import os
 from openai import OpenAI, OpenAIError
 
@@ -102,3 +102,58 @@ class AiCoach:
             "Formuliere daraus ein finales SMART-Ziel in weniger als 25 Wörtern."
         )
         return self.ask(prompt)
+
+
+def suggest_next_steps(goal, obstacles: str, client: Optional[OpenAI] = None) -> List[str]:
+    """Generiert bis zu drei nächste Schritte zu einem Ziel.
+
+    Jeder Schritt enthält höchstens zwölf Wörter. Wenn kein LLM verfügbar ist
+    oder ein Fehler auftritt, werden einfache Standardvorschläge zurückgegeben.
+    """
+
+    if client is None:
+        key = os.getenv("OPENAI_API_KEY")
+        client = OpenAI(api_key=key) if key else None
+
+    goal_text = getattr(goal, "final_text", None) or getattr(goal, "raw_text", "")
+    prompt = (
+        f"{SMART_PROMPT}\n"
+        f"Ziel: {goal_text}\n"
+        f"Hindernisse: {obstacles}\n"
+        "Gib maximal drei Vorschläge für nächste Schritte als Bullet Points. "
+        "Jeder Vorschlag höchstens zwölf Wörter."
+    )
+
+    def _fallback() -> List[str]:
+        return [
+            "Frage Lehrkraft nach Rat.",
+            "Wiederhole relevante Aufgaben Schritt für Schritt.",
+            "Arbeite mit Mitschüler zusammen.",
+        ]
+
+    if not client:
+        return _fallback()
+
+    try:
+        resp = client.responses.create(
+            model="gpt-4o-mini",
+            input=prompt,
+            max_output_tokens=120,
+        )
+        content = resp.output[0].content[0].text.strip()
+    except OpenAIError:
+        return _fallback()
+
+    suggestions: List[str] = []
+    for line in content.splitlines():
+        line = line.strip().lstrip("-*•").strip()
+        if not line:
+            continue
+        words = line.split()
+        if len(words) > 12:
+            line = " ".join(words[:12])
+        suggestions.append(line)
+        if len(suggestions) >= 3:
+            break
+
+    return suggestions or _fallback()
