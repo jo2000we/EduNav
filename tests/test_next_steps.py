@@ -10,7 +10,7 @@ from reflections.models import Reflection
 
 class NextStepSuggestTests(APITestCase):
     def setUp(self):
-        self.lesson = LessonSession.objects.create(date="2024-01-01")
+        self.lesson = LessonSession.objects.create(date="2024-01-01", use_ai=True)
         self.user = User.objects.create_user(pseudonym="vg", gruppe=User.VG)
         self.session = UserSession.objects.create(user=self.user, lesson_session=self.lesson)
         self.goal = Goal.objects.create(
