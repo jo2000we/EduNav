@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Optional
-import re
 import os
 from openai import OpenAI, OpenAIError
 
@@ -12,21 +12,63 @@ SMART_PROMPT = (
 )
 
 
-def evaluate_smart(text: str, topic: str | None = None) -> dict:
-    specific = any(word in text.lower() for word in ["funktion", "quiz", "text", "bericht", "test"])
-    measurable = bool(re.search(r"\d", text))
-    achievable = not any(word in text.lower() for word in ["alles", "fertig", "komplett"])
-    relevant = bool(topic and topic.lower() in text.lower()) if topic else True
-    time_bound = "heute" in text.lower() or "stunde" in text.lower()
-    score = sum([specific, measurable, achievable, relevant, time_bound])
-    return {
-        "specific": specific,
-        "measurable": measurable,
-        "achievable": achievable,
-        "relevant": relevant,
-        "time_bound": time_bound,
-        "score": score,
-    }
+def evaluate_smart(text: str, topic: str, client: Optional[OpenAI] = None) -> dict:
+    """Bewertet einen Zieltext anhand der SMART-Kriterien über das LLM.
+
+    Gibt zusätzlich eine Rückfrage zurück, falls das Ziel noch nicht SMART ist.
+    """
+    if client is None:
+        key = os.getenv("OPENAI_API_KEY")
+        client = OpenAI(api_key=key) if key else None
+
+    prompt = (
+        f"{SMART_PROMPT}\n"
+        f"Thema der Stunde: {topic}\n"
+        f"Zieltext: {text}\n"
+        "Bewerte, ob das Ziel spezifisch, messbar, erreichbar, relevant und zeitgebunden ist. "
+        "Antworte ausschließlich als JSON mit den Schlüsseln "
+        "specific, measurable, achievable, relevant, time_bound und question."
+    )
+
+    if not client:
+        return {
+            "specific": False,
+            "measurable": False,
+            "achievable": False,
+            "relevant": False,
+            "time_bound": False,
+            "score": 0,
+            "question": "(KI nicht verfügbar) Bitte formuliere dein Ziel genauer.",
+        }
+
+    try:
+        resp = client.responses.create(
+            model="gpt-4o-mini",
+            input=prompt,
+            max_output_tokens=150,
+        )
+        content = resp.output[0].content[0].text.strip()
+        data = json.loads(content)
+    except (OpenAIError, ValueError, KeyError):
+        return {
+            "specific": False,
+            "measurable": False,
+            "achievable": False,
+            "relevant": False,
+            "time_bound": False,
+            "score": 0,
+            "question": "(Fehler bei KI) Bitte versuche es erneut.",
+        }
+
+    for key in ["specific", "measurable", "achievable", "relevant", "time_bound"]:
+        data[key] = bool(data.get(key))
+
+    data["score"] = sum(
+        data[k]
+        for k in ["specific", "measurable", "achievable", "relevant", "time_bound"]
+    )
+    data.setdefault("question", "")
+    return data
 
 
 @dataclass
@@ -53,48 +95,10 @@ class AiCoach:
     def _conversation(self, goal) -> str:
         return "\n".join(i.content for i in goal.interactions.order_by("turn"))
 
-    def ask_next(self, goal) -> str:
-        score = goal.smart_score or {}
-        missing = [c for c in ["specific", "measurable", "achievable", "relevant", "time_bound"] if not score.get(c)]
+    def finalize(self, goal, topic: str) -> str:
         conversation = self._conversation(goal)
-        if not missing:
-            return self.finalize(goal)
-        mapping = {
-            "specific": "konkreter", "measurable": "messbar", "achievable": "realistisch",
-            "relevant": "relevant zum Thema", "time_bound": "zeitlich begrenzt",
-        }
-        crit = mapping[missing[0]]
         prompt = (
-            f"{SMART_PROMPT}\n{conversation}\n"
-            f"Frage den Lernenden gezielt, damit das Ziel {crit} wird."
+            f"{SMART_PROMPT}\nThema der Stunde: {topic}\n{conversation}\n"
+            "Formuliere daraus ein finales SMART-Ziel in weniger als 25 Wörtern."
         )
-        return self.ask(prompt)
-
-    def finalize(self, goal) -> str:
-        score = goal.smart_score or {}
-        missing = [
-            c
-            for c in ["specific", "measurable", "achievable", "relevant", "time_bound"]
-            if not score.get(c)
-        ]
-        conversation = self._conversation(goal)
-        mapping = {
-            "specific": "konkreter",
-            "measurable": "messbarer",
-            "achievable": "realistischer",
-            "relevant": "relevanter zum Thema",
-            "time_bound": "zeitlich klarer",
-        }
-        if missing:
-            miss_text = ", ".join(mapping[c] for c in missing)
-            prompt = (
-                f"{SMART_PROMPT}\n{conversation}\n"
-                "Formuliere daraus ein finales SMART-Ziel in weniger als 25 Wörtern. "
-                f"Es soll {miss_text} sein."
-            )
-        else:
-            prompt = (
-                f"{SMART_PROMPT}\n{conversation}\n"
-                "Formuliere daraus ein finales SMART-Ziel in weniger als 25 Wörtern."
-            )
         return self.ask(prompt)
