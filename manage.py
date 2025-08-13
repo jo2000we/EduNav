@@ -2,11 +2,17 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
+from pathlib import Path
 
 
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'EduNav.settings')
+    # Ensure project src is on the path
+    base_dir = Path(__file__).resolve().parent
+    src_path = base_dir / "src"
+    sys.path.insert(0, str(src_path))
+
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

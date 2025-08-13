@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Login{% endblock %}
+{% block content %}
+<h1 class="text-xl mb-4">Login</h1>
+<form method="post" class="space-y-2">
+    {% csrf_token %}
+    <input type="text" name="pseudonym" placeholder="Pseudonym" class="w-full border p-2" required />
+    <input type="text" name="class_code" placeholder="Klasse" class="w-full border p-2" />
+    <button type="submit" class="bg-blue-500 text-white px-4 py-2">Einloggen</button>
+</form>
+{% endblock %}
