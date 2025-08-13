@@ -9,5 +9,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         User.objects.get_or_create(pseudonym="alice", defaults={"gruppe": User.VG})
         User.objects.get_or_create(pseudonym="bob", defaults={"gruppe": User.KG})
-        LessonSession.objects.get_or_create(date=timezone.now().date(), topic="Demo")
+        LessonSession.objects.get_or_create(
+            date=timezone.now().date(), defaults={"topic": "Demo", "use_ai": True}
+        )
         self.stdout.write(self.style.SUCCESS("Demo data created"))

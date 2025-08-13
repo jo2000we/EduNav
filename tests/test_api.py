@@ -11,7 +11,7 @@ from reflections.models import Reflection
 
 class GroupPermissionTests(APITestCase):
     def setUp(self):
-        self.lesson = LessonSession.objects.create(date="2024-01-01")
+        self.lesson = LessonSession.objects.create(date="2024-01-01", use_ai=True)
         self.user_kg = User.objects.create_user(pseudonym="kg", gruppe=User.KG)
         self.user_vg = User.objects.create_user(pseudonym="vg", gruppe=User.VG)
         self.session_kg = UserSession.objects.create(user=self.user_kg, lesson_session=self.lesson)
@@ -33,7 +33,7 @@ class GroupPermissionTests(APITestCase):
 
 class GoalFinalizeTests(APITestCase):
     def setUp(self):
-        self.lesson = LessonSession.objects.create(date="2024-01-01")
+        self.lesson = LessonSession.objects.create(date="2024-01-01", use_ai=True)
         self.user = User.objects.create_user(pseudonym="vg", gruppe=User.VG)
         self.session = UserSession.objects.create(user=self.user, lesson_session=self.lesson)
         self.client.force_login(self.user)
@@ -110,7 +110,7 @@ class ExportTests(APITestCase):
 
 class NextStepSuggestAPITests(APITestCase):
     def setUp(self):
-        self.lesson = LessonSession.objects.create(date="2024-01-01")
+        self.lesson = LessonSession.objects.create(date="2024-01-01", use_ai=True)
         self.user_vg = User.objects.create_user(pseudonym="vg", gruppe=User.VG)
         self.user_kg = User.objects.create_user(pseudonym="kg", gruppe=User.KG)
         self.session_vg = UserSession.objects.create(

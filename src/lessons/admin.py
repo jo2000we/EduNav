@@ -3,8 +3,8 @@ from .models import LessonSession, UserSession
 
 @admin.register(LessonSession)
 class LessonSessionAdmin(admin.ModelAdmin):
-    list_display = ("date", "topic", "period")
-    list_filter = ("date",)
+    list_display = ("date", "topic", "period", "use_ai")
+    list_filter = ("date", "use_ai")
 
 @admin.register(UserSession)
 class UserSessionAdmin(admin.ModelAdmin):
