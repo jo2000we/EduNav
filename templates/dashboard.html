@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1 class="text-xl mb-4">Hallo {{ user.pseudonym }} ({{ user.gruppe }})</h1>
+<div id="goal-section">
+{% if user.gruppe == 'KG' %}
+<form hx-post="/api/goals/" hx-target="#goal-section" hx-swap="innerHTML" class="space-y-2">
+    <input type="hidden" name="user_session" value="{{ user_session_id }}" />
+    <textarea name="raw_text" class="w-full border p-2" placeholder="Was möchtest du heute erreichen?"></textarea>
+    <button class="bg-green-500 text-white px-4 py-2">Ziel speichern</button>
+</form>
+{% else %}
+<form hx-post="/api/vg/goals/" hx-target="#goal-section" hx-swap="innerHTML" class="space-y-2">
+    <input type="hidden" name="user_session" value="{{ user_session_id }}" />
+    <textarea name="raw_text" class="w-full border p-2" placeholder="Was möchtest du heute erreichen?"></textarea>
+    <button class="bg-green-500 text-white px-4 py-2">Dialog starten</button>
+</form>
+{% endif %}
+</div>
+{% endblock %}
