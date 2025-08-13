@@ -12,6 +12,7 @@ from rest_framework.permissions import AllowAny
 from .models import User
 from .serializers import LoginSerializer, UserSerializer
 from lessons.models import LessonSession, UserSession
+from goals.models import Goal
 
 
 class LoginView(APIView):
@@ -71,7 +72,12 @@ def reflection_page(request):
     today = timezone.now().date()
     lesson, _ = LessonSession.objects.get_or_create(date=today)
     user_session, _ = UserSession.objects.get_or_create(user=request.user, lesson_session=lesson)
-    return render(request, "reflection.html", {"user_session_id": user_session.id})
+    goal = Goal.objects.filter(user_session=user_session).first()
+    context = {
+        "user_session_id": user_session.id,
+        "goal_id": getattr(goal, "id", ""),
+    }
+    return render(request, "reflection.html", context)
 
 
 def login_page(request):
