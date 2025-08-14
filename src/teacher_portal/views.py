@@ -1,10 +1,16 @@
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import get_object_or_404, redirect, render
 
+from accounts.models import User
 from config.models import SiteSettings
 from lessons.models import Classroom
 
-from .forms import ClassroomForm, SiteSettingsForm
+from .forms import (
+    BulkStudentsForm,
+    ClassroomForm,
+    SiteSettingsForm,
+    StudentForm,
+)
 
 
 @staff_member_required
@@ -69,3 +75,52 @@ def regenerate_classroom_code(request, pk):
         classroom.code = None
         classroom.save()
     return redirect("teacher_portal:portal")
+
+
+@staff_member_required
+def classroom_students(request, pk):
+    classroom = get_object_or_404(Classroom, pk=pk)
+    students = User.objects.filter(classroom=classroom).order_by("pseudonym")
+    form = BulkStudentsForm()
+    if request.method == "POST":
+        form = BulkStudentsForm(request.POST, request.FILES)
+        if form.is_valid():
+            gruppe = form.cleaned_data["gruppe"]
+            for pseudonym in form.cleaned_data["pseudonym_list"]:
+                User.objects.create_user(
+                    pseudonym=pseudonym, classroom=classroom, gruppe=gruppe
+                )
+            return redirect("teacher_portal:classroom_students", pk=classroom.pk)
+    return render(
+        request,
+        "teacher_portal/classroom_students.html",
+        {"classroom": classroom, "students": students, "form": form},
+    )
+
+
+@staff_member_required
+def edit_student(request, pk):
+    student = get_object_or_404(User, pk=pk)
+    if request.method == "POST":
+        form = StudentForm(request.POST, instance=student)
+        if form.is_valid():
+            form.save()
+            return redirect(
+                "teacher_portal:classroom_students", pk=student.classroom_id
+            )
+    else:
+        form = StudentForm(instance=student)
+    return render(
+        request,
+        "teacher_portal/edit_student.html",
+        {"form": form, "student": student},
+    )
+
+
+@staff_member_required
+def delete_student(request, pk):
+    student = get_object_or_404(User, pk=pk)
+    classroom_pk = student.classroom_id
+    if request.method == "POST":
+        student.delete()
+    return redirect("teacher_portal:classroom_students", pk=classroom_pk)
