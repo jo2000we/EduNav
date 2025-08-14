@@ -6,8 +6,8 @@ from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404
 
-from .models import Reflection, Note
-from .serializers import ReflectionSerializer, NoteSerializer
+from .models import Reflection
+from .serializers import ReflectionSerializer
 from goals.permissions import IsVGUser
 from goals.models import Goal
 from goals.services import suggest_next_steps
@@ -24,17 +24,6 @@ class ReflectionCreateView(generics.CreateAPIView):
             user_session.user != self.request.user
             or goal.user_session.user != self.request.user
         ):
-            raise PermissionDenied()
-        serializer.save()
-
-
-class NoteCreateView(generics.CreateAPIView):
-    queryset = Note.objects.all()
-    serializer_class = NoteSerializer
-
-    def perform_create(self, serializer):
-        user_session = serializer.validated_data["user_session"]
-        if user_session.user != self.request.user:
             raise PermissionDenied()
         serializer.save()
 

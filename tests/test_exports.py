@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 
 from lessons.models import LessonSession, UserSession, Classroom
 from goals.models import Goal, KIInteraction, OverallGoal
-from reflections.models import Reflection, Note
+from reflections.models import Reflection
 import openpyxl
 
 
@@ -28,8 +28,14 @@ class ExportViewTests(TestCase):
         self.goal3 = Goal.objects.create(user_session=self.session3, raw_text="g3")
         OverallGoal.objects.create(user=self.user1, text="old overall")
         OverallGoal.objects.create(user=self.user1, text="new overall")
-        Reflection.objects.create(user_session=self.session2, goal=self.goal2, result="yes", obstacles="none", next_step="next", next_step_source="user")
-        Note.objects.create(user_session=self.session2, content="note")
+        Reflection.objects.create(
+            user_session=self.session2,
+            goal=self.goal2,
+            result="yes",
+            obstacles="none",
+            next_step="next",
+            next_step_source="user",
+        )
         KIInteraction.objects.create(goal=self.goal2, turn=1, role="user", content="hi")
 
     def test_csv_filters(self):
@@ -45,7 +51,10 @@ class ExportViewTests(TestCase):
         resp = self.client.get("/api/export/xlsx/")
         self.assertEqual(resp.status_code, 200)
         wb = openpyxl.load_workbook(BytesIO(resp.content))
-        self.assertEqual(set(wb.sheetnames), {"Users", "Goals", "Reflections", "KIInteractions", "Notes", "OverallGoals", "flat_dataset"})
+        self.assertEqual(
+            set(wb.sheetnames),
+            {"Users", "Goals", "Reflections", "KIInteractions", "OverallGoals", "flat_dataset"},
+        )
         ws = wb["flat_dataset"]
         headers = [cell.value for cell in next(ws.iter_rows(max_row=1))]
         self.assertIn("exported_at", headers)
