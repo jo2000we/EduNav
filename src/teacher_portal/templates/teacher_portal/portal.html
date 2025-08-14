@@ -9,8 +9,29 @@
     <h2 class="text-xl mb-2">Site Settings</h2>
     <form method="post">
         {% csrf_token %}
-        {{ settings_form.as_p }}
-        <button type="submit" name="save_settings" class="bg-blue-500 text-white px-4 py-2">Save</button>
+        <div x-data="{msg: '', ok: null}" @htmx:afterRequest="ok = $event.detail.xhr.status === 200; msg = ok ? 'API key valid' : 'API key invalid'" class="space-y-2">
+            <div>
+                {{ settings_form.allow_ai.label_tag }} {{ settings_form.allow_ai }}
+                {% if settings_form.allow_ai.errors %}
+                    <p class="text-red-500">{{ settings_form.allow_ai.errors.0 }}</p>
+                {% endif %}
+            </div>
+            <div>
+                {{ settings_form.openai_api_key.label_tag }}
+                <div class="flex items-center gap-2">
+                    {{ settings_form.openai_api_key }}
+                    <button type="button" class="bg-gray-500 text-white px-2 py-1"
+                            hx-post="{% url 'teacher_portal:check_openai_key' %}"
+                            hx-include="[name='openai_api_key']"
+                            hx-swap="none">Test</button>
+                    <span x-show="msg" x-text="msg" :class="ok ? 'text-green-600' : 'text-red-600'"></span>
+                </div>
+                {% if settings_form.openai_api_key.errors %}
+                    <p class="text-red-500">{{ settings_form.openai_api_key.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </div>
+        <button type="submit" name="save_settings" class="bg-blue-500 text-white px-4 py-2 mt-2">Save</button>
     </form>
 </div>
 
