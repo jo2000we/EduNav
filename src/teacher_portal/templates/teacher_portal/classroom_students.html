@@ -1,44 +1,55 @@
 {% extends "base.html" %}
-
+{% load form_tags %}
 {% block title %}Students{% endblock %}
-
 {% block content %}
-<h1 class="text-2xl mb-4">Students for {{ classroom.name }}</h1>
-
-<h2 class="text-xl mb-2">Add Students</h2>
-<form method="post" enctype="multipart/form-data" class="mb-4">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="bg-green-500 text-white px-4 py-2">Add Students</button>
-</form>
-
-<h2 class="text-xl mb-2">Student List</h2>
-<table class="min-w-full">
-    <thead>
-        <tr>
-            <th class="text-left">Pseudonym</th>
-            <th class="text-left">Group</th>
-            <th class="text-left">Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for student in students %}
-        <tr>
-            <td>{{ student.pseudonym }}</td>
-            <td>{{ student.get_gruppe_display }}</td>
-            <td>
-                <a href="{% url 'teacher_portal:edit_student' student.id %}" class="bg-blue-500 text-white px-2 py-1 mr-2">Edit</a>
-                <form method="post" action="{% url 'teacher_portal:delete_student' student.id %}" class="inline">
-                    {% csrf_token %}
-                    <button type="submit" class="bg-red-500 text-white px-2 py-1">Delete</button>
-                </form>
-            </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="3">No students yet.</td></tr>
+<h1 class="text-2xl md:text-3xl font-semibold tracking-tight mb-6">Students for {{ classroom.name }}</h1>
+<section class="card mb-6">
+    <h2 class="text-lg md:text-xl font-semibold mb-3">Add Students</h2>
+    <form method="post" enctype="multipart/form-data" class="grid gap-4 md:gap-5">
+        {% csrf_token %}
+        {% for field in form %}
+        <label class="grid gap-1">
+            <span class="text-sm font-medium">{{ field.label }}</span>
+            {{ field|add_class:"w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" }}
+            {% if field.help_text %}<span class="text-xs text-gray-500">{{ field.help_text }}</span>{% endif %}
+            {% for error in field.errors %}<span class="text-xs text-red-600">{{ error }}</span>{% endfor %}
+        </label>
         {% endfor %}
-    </tbody>
-</table>
-
-<a href="{% url 'teacher_portal:portal' %}" class="text-blue-500">Back</a>
+        <div class="flex gap-3">
+            <button type="submit" class="btn-primary">Add Students</button>
+        </div>
+    </form>
+</section>
+<section class="card">
+    <h2 class="text-lg md:text-xl font-semibold mb-3">Student List</h2>
+    <div class="overflow-x-auto rounded-2xl ring-1 ring-gray-200/60 dark:ring-white/10">
+        <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50 dark:bg-gray-800/60">
+                <tr class="text-gray-600 dark:text-gray-300">
+                    <th class="px-4 py-3 font-medium">Pseudonym</th>
+                    <th class="px-4 py-3 font-medium">Group</th>
+                    <th class="px-4 py-3"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                {% for student in students %}
+                <tr class="hover:bg-gray-50/60 dark:hover:bg-gray-800/40">
+                    <td class="px-4 py-3">{{ student.pseudonym }}</td>
+                    <td class="px-4 py-3">{{ student.get_gruppe_display }}</td>
+                    <td class="px-4 py-3 text-right flex gap-2 justify-end">
+                        <a href="{% url 'teacher_portal:edit_student' student.id %}" class="btn-ghost">Edit</a>
+                        <form method="post" action="{% url 'teacher_portal:delete_student' student.id %}" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-ghost text-red-600">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="px-4 py-10 text-center text-gray-600 dark:text-gray-300">😅 Noch nichts hier.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+<a href="{% url 'teacher_portal:portal' %}" class="btn-ghost mt-4">Back</a>
 {% endblock %}

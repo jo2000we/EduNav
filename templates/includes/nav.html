@@ -1,0 +1,32 @@
+{% url 'dashboard' as dashboard_url %}
+{% if request.user.is_staff %}{% url 'teacher_portal:portal' as portal_url %}{% endif %}
+<header class="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-800" x-data="{open:false,dark:document.documentElement.classList.contains('dark')}">
+  <div class="container mx-auto max-w-6xl px-4 lg:px-6 flex items-center justify-between h-16">
+    <a href="{{ dashboard_url }}" class="text-lg font-semibold">EduNav</a>
+    <nav class="hidden md:flex items-center gap-3">
+      <a href="{{ dashboard_url }}" class="btn-ghost" {% if request.path == dashboard_url %}aria-current="page"{% endif %}>Dashboard</a>
+      {% if request.user.is_staff %}
+      <a href="{{ portal_url }}" class="btn-ghost" {% if request.path == portal_url %}aria-current="page"{% endif %}>Teacher Portal</a>
+      {% endif %}
+      <button @click="dark=!dark;localStorage.setItem('dark',dark);document.documentElement.classList.toggle('dark',dark);document.dispatchEvent(new CustomEvent('toggle-dark'))" class="btn-ghost" :aria-label="dark ? 'Hellmodus' : 'Dunkelmodus'">
+        <svg x-show="!dark" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 2zM10 14.5a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5a.75.75 0 01.75-.75zM4.72 4.72a.75.75 0 011.06 0l1.06 1.06a.75.75 0 11-1.06 1.06L4.72 5.78a.75.75 0 010-1.06zm8.48 8.48a.75.75 0 011.06 0l1.06 1.06a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zM2 10a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5h-1.5A.75.75 0 012 10zm14.5 0a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5h-1.5a.75.75 0 01-.75-.75zM4.72 15.28a.75.75 0 010-1.06l1.06-1.06a.75.75 0 111.06 1.06L5.78 15.28a.75.75 0 01-1.06 0zm8.48-8.48a.75.75 0 010-1.06l1.06-1.06a.75.75 0 111.06 1.06l-1.06 1.06a.75.75 0 01-1.06 0zM10 5.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9z"/></svg>
+        <svg x-show="dark" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M17.293 13.293a8 8 0 01-10.586-10.586 8 8 0 1010.586 10.586z" clip-rule="evenodd"/></svg>
+      </button>
+      <a href="{% url 'logout' %}" class="btn-ghost">Logout</a>
+    </nav>
+    <button class="md:hidden btn-ghost" @click="open=!open" aria-label="Menu">
+      <svg x-show="!open" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      <svg x-show="open" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <nav class="md:hidden border-t border-gray-200 dark:border-gray-800" x-show="open" x-transition>
+    <div class="container mx-auto max-w-6xl px-4 lg:px-6 py-4 flex flex-col gap-2">
+      <a href="{{ dashboard_url }}" class="btn-ghost" {% if request.path == dashboard_url %}aria-current="page"{% endif %}>Dashboard</a>
+      {% if request.user.is_staff %}
+      <a href="{{ portal_url }}" class="btn-ghost" {% if request.path == portal_url %}aria-current="page"{% endif %}>Teacher Portal</a>
+      {% endif %}
+      <button @click="dark=!dark;localStorage.setItem('dark',dark);document.documentElement.classList.toggle('dark',dark);document.dispatchEvent(new CustomEvent('toggle-dark'))" class="btn-ghost text-left">Dark Mode</button>
+      <a href="{% url 'logout' %}" class="btn-ghost">Logout</a>
+    </div>
+  </nav>
+</header>
