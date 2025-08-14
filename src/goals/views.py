@@ -15,6 +15,7 @@ from lessons.models import UserSession
 
 
 class OverallGoalView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request):
         goal = OverallGoal.objects.filter(user=request.user).first()
         if not goal:
