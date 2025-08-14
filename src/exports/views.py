@@ -51,7 +51,7 @@ def build_dataset(from_date=None, to_date=None, klass=None, group=None):
             "smart_achievable": smart.get("achievable"),
             "smart_relevant": smart.get("relevant"),
             "smart_time_bound": smart.get("time_bound"),
-            "smart_score": smart.get("score"),
+            "smart_score": smart.get("overall", smart.get("score")),
             "ref_result": getattr(reflection, "result", None),
             "ref_obstacles": getattr(reflection, "obstacles", None),
             "ref_next_step": getattr(reflection, "next_step", None),

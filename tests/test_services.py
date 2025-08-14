@@ -55,7 +55,7 @@ def test_evaluate_smart_llm_parsing():
     }
     client = DummyClient(payload)
     result = evaluate_smart("Ich möchte besser rechnen", "Mathe", client=client)
-    assert result["score"] == 3
+    assert result["overall"] == 3
     assert result["question"] == "Wie kannst du dein Ziel messbar machen?"
     assert result["measurable"] is False
 

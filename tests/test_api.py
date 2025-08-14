@@ -88,7 +88,7 @@ class AiCoachPromptTests(APITestCase):
             "achievable": True,
             "relevant": True,
             "time_bound": True,
-            "score": 5,
+            "overall": 5,
             "question": "",
         }
         mock_ask.return_value = "Final"

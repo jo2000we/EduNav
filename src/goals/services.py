@@ -54,7 +54,7 @@ def evaluate_smart(text: str, topic: str, client: Optional[OpenAI] = None) -> di
             "achievable": False,
             "relevant": False,
             "time_bound": False,
-            "score": 0,
+            "overall": 0,
             "question": "(KI nicht verfügbar) Bitte formuliere dein Ziel genauer.",
         }
 
@@ -73,14 +73,14 @@ def evaluate_smart(text: str, topic: str, client: Optional[OpenAI] = None) -> di
             "achievable": False,
             "relevant": False,
             "time_bound": False,
-            "score": 0,
+            "overall": 0,
             "question": "(Fehler bei KI) Bitte versuche es erneut.",
         }
 
     for key in ["specific", "measurable", "achievable", "relevant", "time_bound"]:
         data[key] = bool(data.get(key))
 
-    data["score"] = sum(
+    data["overall"] = sum(
         data[k]
         for k in ["specific", "measurable", "achievable", "relevant", "time_bound"]
     )

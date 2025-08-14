@@ -65,10 +65,10 @@ class CoachNextView(APIView):
             "achievable",
             "relevant",
             "time_bound",
-            "score",
+            "overall",
         ]}
         goal.save()
-        if result["score"] == 5:
+        if result["overall"] == 5:
             answer = coach.finalize(goal, topic)
             status_flag = "ready_to_finalize"
         else:
