@@ -71,13 +71,16 @@ class DashboardAiToggleTests(TestCase):
         settings = SiteSettings.get()
         settings.allow_ai = False
         settings.save()
+        lesson = LessonSession.objects.create(date=timezone.now().date(), classroom=self.classroom)
+        session = UserSession.objects.create(user=self.user, lesson_session=lesson)
+        Goal.objects.create(user_session=session, raw_text="test")
         response = self.client.get(reverse("dashboard"))
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.context["can_use_ai"])
         self.assertIn("Reflexion starten", response.content.decode())
 
 
-class DashboardKgReflectionLinkTests(TestCase):
+class DashboardReflectionLinkTests(TestCase):
     def setUp(self):
         self.classroom = Classroom.objects.create(name="10A", use_ai=True)
         self.user = User.objects.create_user(
@@ -85,10 +88,20 @@ class DashboardKgReflectionLinkTests(TestCase):
         )
         self.client.force_login(self.user)
 
-    def test_kg_user_sees_reflection_link(self):
+    def _create_goal(self):
+        lesson = LessonSession.objects.create(date=timezone.now().date(), classroom=self.classroom)
+        session = UserSession.objects.create(user=self.user, lesson_session=lesson)
+        Goal.objects.create(user_session=session, raw_text="test")
+
+    def test_link_hidden_without_goal(self):
         response = self.client.get(reverse("dashboard"))
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(response.context["can_use_ai"])
+        self.assertNotIn("Reflexion starten", response.content.decode())
+
+    def test_link_visible_with_goal(self):
+        self._create_goal()
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.status_code, 200)
         self.assertIn("Reflexion starten", response.content.decode())
 
 

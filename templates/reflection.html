@@ -5,7 +5,7 @@
     <form x-show="!submitted"
           hx-post="/api/reflections/"
           hx-swap="none"
-          @htmx:afterRequest="submitted=true; setTimeout(()=>window.location.href='{% url 'dashboard' %}',1500)"
+          @htmx:afterRequest="handleResponse"
           class="space-y-2">
         <input type="hidden" name="user_session" value="{{ user_session_id }}">
         <input type="hidden" name="goal" value="{{ goal_id }}">
@@ -31,7 +31,7 @@
                         :hx-vals="{selected: s}"
                         hx-include="closest form"
                         hx-swap="none"
-                        @htmx:afterRequest="submitted=true; setTimeout(()=>window.location.href='{% url 'dashboard' %}',1500)"
+                        @htmx:afterRequest="handleResponse"
                         x-text="s"></button>
             </template>
         </div>
@@ -39,16 +39,27 @@
         <button class="bg-blue-500 text-white px-4 py-2 w-full sm:w-auto">Reflexion speichern</button>
     </form>
     <div x-show="submitted" class="p-4 bg-green-100 rounded">Danke für deine Reflexion!</div>
+    <div x-show="error" class="p-4 bg-red-100 rounded" x-text="error"></div>
 </div>
 <script>
 function reflectionForm(){
     return {
         suggestions: [],
         submitted: false,
+        error: '',
         handleSuggestions(e){
             let data = {};
             try { data = JSON.parse(e.detail.xhr.responseText); } catch(err){}
             this.suggestions = data.suggestions || [];
+        },
+        handleResponse(e){
+            if(e.detail.xhr.status >= 200 && e.detail.xhr.status < 300){
+                this.error = '';
+                this.submitted = true;
+                setTimeout(()=>window.location.href='{% url 'dashboard' %}',1500);
+            } else {
+                this.error = 'Beim Speichern ist ein Fehler aufgetreten.';
+            }
         }
     }
 }
