@@ -144,3 +144,15 @@ class DashboardProgressTests(TestCase):
         self.assertEqual(response.context["open_goals"], 1)
         self.assertEqual(response.context["completion_rate"], 50)
         self.assertContains(response, "progressChart")
+
+
+class LogoutTests(TestCase):
+    def setUp(self):
+        self.classroom = Classroom.objects.create(name="10A")
+        self.user = User.objects.create_user(pseudonym="u1", classroom=self.classroom)
+        self.client.force_login(self.user)
+
+    def test_logout_redirects_and_clears_session(self):
+        response = self.client.get(reverse("logout"))
+        self.assertRedirects(response, reverse("login"))
+        self.assertNotIn("_auth_user_id", self.client.session)

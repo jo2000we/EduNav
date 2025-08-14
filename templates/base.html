@@ -9,6 +9,14 @@
     <title>{% block title %}SRL Platform{% endblock %}</title>
 </head>
 <body class="p-4 max-w-xl mx-auto">
+    {% if request.user.is_authenticated %}
+    <header class="mb-4">
+        <nav class="flex gap-4">
+            <a href="{% url 'dashboard' %}">Dashboard</a>
+            <a href="{% url 'logout' %}">Logout</a>
+        </nav>
+    </header>
+    {% endif %}
     {% block content %}{% endblock %}
 </body>
 </html>

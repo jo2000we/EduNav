@@ -23,6 +23,7 @@ from accounts.views import (
     goal_kg_page,
     reflection_page,
     overall_goal_page,
+    logout_view,
 )
 
 urlpatterns = [
@@ -34,6 +35,7 @@ urlpatterns = [
     path("goal/kg/", goal_kg_page, name="goal_kg"),
     path("reflection/", reflection_page, name="reflection"),
     path("overall-goal/", overall_goal_page, name="overall_goal"),
+    path("logout/", logout_view, name="logout"),
     path("api/", include("accounts.urls")),
     path("api/", include("lessons.urls")),
     path("api/", include("goals.urls")),
