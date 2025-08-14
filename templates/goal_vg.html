@@ -21,6 +21,10 @@
     </div>
 </div>
 <script>
+function getCookie(name){
+    const match = document.cookie.match(new RegExp('(^| )'+name+'=([^;]+)'));
+    return match ? match[2] : '';
+}
 function goalCoach(){
     return {
         message:'',
@@ -34,6 +38,16 @@ function goalCoach(){
             if(data.assistant_text){ this.addMessage('assistant', data.assistant_text); }
             if(data.smart_status){ this.smart = data.smart_status; }
             this.message='';
+            if(data.message_type === 'ready_to_finalize'){
+                fetch('/api/vg/goals/finalize/', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+                    body:JSON.stringify({goal_id:this.goalId})
+                }).then(r=>r.json()).then(res=>{
+                    if(res.final_text){ this.addMessage('assistant', res.final_text); }
+                    if(res.smart_score){ this.smart = res.smart_score; }
+                });
+            }
         },
         addMessage(role,text){
             const chat = document.getElementById('chat');
