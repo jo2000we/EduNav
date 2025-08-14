@@ -8,6 +8,7 @@ from accounts.models import User
 from lessons.models import LessonSession, UserSession, Classroom
 from goals.models import Goal, KIInteraction, OverallGoal
 from reflections.models import Reflection
+from config.models import SiteSettings
 
 class GroupPermissionTests(APITestCase):
     def setUp(self):
@@ -30,6 +31,14 @@ class GroupPermissionTests(APITestCase):
         goal_id = resp.data["id"]
         goal = Goal.objects.get(id=goal_id)
         self.assertEqual(goal.interactions.count(), 1)
+
+    def test_vg_forbidden_when_ai_disabled(self):
+        settings = SiteSettings.get()
+        settings.allow_ai = False
+        settings.save()
+        self.client.force_login(self.user_vg)
+        resp = self.client.post("/api/vg/goals/", {"user_session": str(self.session_vg.id), "raw_text": "test"})
+        self.assertEqual(resp.status_code, 403)
 
 
 class GoalFinalizeTests(APITestCase):

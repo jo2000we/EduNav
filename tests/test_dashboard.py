@@ -5,6 +5,7 @@ from accounts.models import User
 from lessons.models import LessonSession, UserSession, Classroom
 from goals.models import Goal
 from reflections.models import Reflection
+from config.models import SiteSettings
 
 
 class DashboardHistoryTests(TestCase):
@@ -24,3 +25,21 @@ class DashboardHistoryTests(TestCase):
         goals = response.context["goals"]
         self.assertTrue(any(g.id == goal.id for g in goals))
         self.assertEqual(goals[0].reflection_set.first().result, "yes")
+
+
+class DashboardAiToggleTests(TestCase):
+    def setUp(self):
+        self.classroom = Classroom.objects.create(name="10A", use_ai=True)
+        self.user = User.objects.create_user(
+            pseudonym="u1", gruppe=User.VG, classroom=self.classroom
+        )
+        self.client.force_login(self.user)
+
+    def test_ai_buttons_hidden_when_disabled(self):
+        settings = SiteSettings.get()
+        settings.allow_ai = False
+        settings.save()
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context["can_use_ai"])
+        self.assertNotIn("Reflexion starten", response.content.decode())
