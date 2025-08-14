@@ -194,13 +194,25 @@ class NextStepSuggestAPITests(APITestCase):
 class LoginWorkflowTests(APITestCase):
     def setUp(self):
         self.classroom = Classroom.objects.create(name="10A", code="abc", use_ai=True)
+        self.alice = User.objects.create_user(pseudonym="alice")
+        self.bob = User.objects.create_user(pseudonym="bob")
 
     def test_login_assigns_classroom(self):
-        resp = self.client.post("/api/login/", {"pseudonym": "alice", "class_code": "abc"}, format="json")
+        resp = self.client.post(
+            "/api/login/", {"pseudonym": "alice", "class_code": "abc"}, format="json"
+        )
         self.assertEqual(resp.status_code, 200)
-        user = User.objects.get(pseudonym="alice")
-        self.assertEqual(user.classroom, self.classroom)
+        self.alice.refresh_from_db()
+        self.assertEqual(self.alice.classroom, self.classroom)
 
     def test_login_missing_classroom(self):
-        resp = self.client.post("/api/login/", {"pseudonym": "bob", "class_code": "wrong"}, format="json")
+        resp = self.client.post(
+            "/api/login/", {"pseudonym": "bob", "class_code": "wrong"}, format="json"
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_login_unknown_user(self):
+        resp = self.client.post(
+            "/api/login/", {"pseudonym": "unknown"}, format="json"
+        )
         self.assertEqual(resp.status_code, 400)
