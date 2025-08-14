@@ -5,7 +5,7 @@ from .models import LessonSession, UserSession
 class LessonSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = LessonSession
-        fields = ["id", "date", "topic", "period"]
+        fields = ["id", "date", "topic", "period", "classroom", "use_ai"]
 
 
 class UserSessionSerializer(serializers.ModelSerializer):

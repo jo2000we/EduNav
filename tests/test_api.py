@@ -5,15 +5,16 @@ import openpyxl
 from django.urls import reverse
 from rest_framework.test import APITestCase
 from accounts.models import User
-from lessons.models import LessonSession, UserSession
+from lessons.models import LessonSession, UserSession, Classroom
 from goals.models import Goal, KIInteraction
 from reflections.models import Reflection
 
 class GroupPermissionTests(APITestCase):
     def setUp(self):
-        self.lesson = LessonSession.objects.create(date="2024-01-01", use_ai=True)
-        self.user_kg = User.objects.create_user(pseudonym="kg", gruppe=User.KG)
-        self.user_vg = User.objects.create_user(pseudonym="vg", gruppe=User.VG)
+        self.classroom = Classroom.objects.create(name="10A", use_ai=True)
+        self.lesson = LessonSession.objects.create(date="2024-01-01", classroom=self.classroom)
+        self.user_kg = User.objects.create_user(pseudonym="kg", gruppe=User.KG, classroom=self.classroom)
+        self.user_vg = User.objects.create_user(pseudonym="vg", gruppe=User.VG, classroom=self.classroom)
         self.session_kg = UserSession.objects.create(user=self.user_kg, lesson_session=self.lesson)
         self.session_vg = UserSession.objects.create(user=self.user_vg, lesson_session=self.lesson)
 
@@ -33,8 +34,9 @@ class GroupPermissionTests(APITestCase):
 
 class GoalFinalizeTests(APITestCase):
     def setUp(self):
-        self.lesson = LessonSession.objects.create(date="2024-01-01", use_ai=True)
-        self.user = User.objects.create_user(pseudonym="vg", gruppe=User.VG)
+        self.classroom = Classroom.objects.create(name="10A", use_ai=True)
+        self.lesson = LessonSession.objects.create(date="2024-01-01", classroom=self.classroom)
+        self.user = User.objects.create_user(pseudonym="vg", gruppe=User.VG, classroom=self.classroom)
         self.session = UserSession.objects.create(user=self.user, lesson_session=self.lesson)
         self.client.force_login(self.user)
         resp = self.client.post(
@@ -60,13 +62,16 @@ class ExportTests(APITestCase):
             pseudonym="staff", password="pw", is_staff=True
         )
         self.regular = User.objects.create_user(pseudonym="regular", password="pw")
-        self.lesson1 = LessonSession.objects.create(date="2024-01-01")
-        self.lesson2 = LessonSession.objects.create(date="2024-05-01")
+        self.class_a = Classroom.objects.create(name="10A")
+        self.class_b = Classroom.objects.create(name="10B")
+        self.lesson1 = LessonSession.objects.create(date="2024-01-01", classroom=self.class_a)
+        self.lesson2 = LessonSession.objects.create(date="2024-05-01", classroom=self.class_a)
+        self.lesson3 = LessonSession.objects.create(date="2024-01-01", classroom=self.class_b)
         self.user_vg = User.objects.create_user(
-            pseudonym="u1", gruppe=User.VG, klassengruppe="10A"
+            pseudonym="u1", gruppe=User.VG, classroom=self.class_a
         )
         self.user_kg = User.objects.create_user(
-            pseudonym="u2", gruppe=User.KG, klassengruppe="10B"
+            pseudonym="u2", gruppe=User.KG, classroom=self.class_b
         )
         self.session1 = UserSession.objects.create(
             user=self.user_vg, lesson_session=self.lesson1
@@ -75,7 +80,7 @@ class ExportTests(APITestCase):
             user=self.user_vg, lesson_session=self.lesson2
         )
         self.session3 = UserSession.objects.create(
-            user=self.user_kg, lesson_session=self.lesson1
+            user=self.user_kg, lesson_session=self.lesson3
         )
         Goal.objects.create(user_session=self.session1, raw_text="g1")
         Goal.objects.create(user_session=self.session2, raw_text="g2")
@@ -110,9 +115,10 @@ class ExportTests(APITestCase):
 
 class NextStepSuggestAPITests(APITestCase):
     def setUp(self):
-        self.lesson = LessonSession.objects.create(date="2024-01-01", use_ai=True)
-        self.user_vg = User.objects.create_user(pseudonym="vg", gruppe=User.VG)
-        self.user_kg = User.objects.create_user(pseudonym="kg", gruppe=User.KG)
+        self.classroom = Classroom.objects.create(name="10A", use_ai=True)
+        self.lesson = LessonSession.objects.create(date="2024-01-01", classroom=self.classroom)
+        self.user_vg = User.objects.create_user(pseudonym="vg", gruppe=User.VG, classroom=self.classroom)
+        self.user_kg = User.objects.create_user(pseudonym="kg", gruppe=User.KG, classroom=self.classroom)
         self.session_vg = UserSession.objects.create(
             user=self.user_vg, lesson_session=self.lesson
         )
@@ -147,3 +153,18 @@ class NextStepSuggestAPITests(APITestCase):
             "/api/vg/next-step/suggest/", {"goal_id": str(self.goal_kg.id)}
         )
         self.assertEqual(resp.status_code, 403)
+
+
+class LoginWorkflowTests(APITestCase):
+    def setUp(self):
+        self.classroom = Classroom.objects.create(name="10A", code="abc", use_ai=True)
+
+    def test_login_assigns_classroom(self):
+        resp = self.client.post("/api/login/", {"pseudonym": "alice", "class_code": "abc"}, format="json")
+        self.assertEqual(resp.status_code, 200)
+        user = User.objects.get(pseudonym="alice")
+        self.assertEqual(user.classroom, self.classroom)
+
+    def test_login_missing_classroom(self):
+        resp = self.client.post("/api/login/", {"pseudonym": "bob", "class_code": "wrong"}, format="json")
+        self.assertEqual(resp.status_code, 400)
