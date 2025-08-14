@@ -427,9 +427,3 @@ class OwnershipAPITests(APITestCase):
         resp = self.client.post("/api/reflections/", data)
         self.assertEqual(resp.status_code, 403)
 
-    def test_note_requires_own_session(self):
-        self.client.force_login(self.user_vg1)
-        resp = self.client.post(
-            "/api/notes/", {"user_session": str(self.session_vg2.id), "content": "h"}
-        )
-        self.assertEqual(resp.status_code, 403)

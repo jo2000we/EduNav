@@ -15,7 +15,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Count
 
 from goals.models import Goal, KIInteraction, OverallGoal
-from reflections.models import Reflection, Note
+from reflections.models import Reflection
 
 
 def build_dataset(from_date=None, to_date=None, klass=None, group=None):
@@ -46,7 +46,6 @@ def build_dataset(from_date=None, to_date=None, klass=None, group=None):
         user = goal.user_session.user
         lesson = goal.user_session.lesson_session
         reflection = Reflection.objects.filter(goal=goal).first()
-        notes_count = Note.objects.filter(user_session=goal.user_session).count()
         ki_turns = KIInteraction.objects.filter(goal=goal).count()
         smart = goal.smart_score or {}
         rows.append(
@@ -70,7 +69,6 @@ def build_dataset(from_date=None, to_date=None, klass=None, group=None):
                 "ref_obstacles": getattr(reflection, "obstacles", None),
                 "ref_next_step": getattr(reflection, "next_step", None),
                 "ref_next_step_source": getattr(reflection, "next_step_source", None),
-                "notes_count": notes_count,
                 "ki_turns": ki_turns,
             }
         )
@@ -171,8 +169,6 @@ class ExportXLSXView(View):
         ]
 
         goal_ids = [g.id for g in goals]
-        user_session_ids = [g.user_session_id for g in goals]
-
         overall_goal_rows = [
             {
                 "id": og.id,
@@ -212,16 +208,6 @@ class ExportXLSXView(View):
             for k in KIInteraction.objects.filter(goal_id__in=goal_ids)
         ]
 
-        note_rows = [
-            {
-                "id": n.id,
-                "user_session": n.user_session_id,
-                "content": n.content,
-                "created_at": n.created_at,
-                "exported_at": exported_at,
-            }
-            for n in Note.objects.filter(user_session_id__in=user_session_ids)
-        ]
 
         wb = openpyxl.Workbook()
         wb.remove(wb.active)
@@ -243,7 +229,6 @@ class ExportXLSXView(View):
         write_sheet("OverallGoals", overall_goal_rows)
         write_sheet("Reflections", reflection_rows)
         write_sheet("KIInteractions", ki_rows)
-        write_sheet("Notes", note_rows)
         write_sheet("flat_dataset", rows)
 
         output = BytesIO()
