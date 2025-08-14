@@ -16,6 +16,8 @@ class TeacherPortalTests(TestCase):
         resp = self.client.get(url)
         assert resp.status_code == 200
         assert b"Site Settings" in resp.content
+        assert b"Datenexport" in resp.content
+        assert b"Auswertung" in resp.content
 
     def test_bulk_add_students_textarea(self):
         classroom = Classroom.objects.create(name="Class 1")
@@ -41,3 +43,11 @@ class TeacherPortalTests(TestCase):
         assert students.count() == 2
         assert {s.pseudonym for s in students} == {"gamma", "delta"}
         assert all(s.gruppe == User.KG for s in students)
+
+    def test_portal_requires_staff(self):
+        self.client.logout()
+        student = User.objects.create_user("student", password="pw", is_staff=False)
+        self.client.force_login(student)
+        url = reverse("teacher_portal:portal")
+        resp = self.client.get(url)
+        assert resp.status_code == 302

@@ -64,3 +64,12 @@ class ExportViewTests(TestCase):
         ws_goals = wb["OverallGoals"]
         og_headers = [cell.value for cell in next(ws_goals.iter_rows(max_row=1))]
         self.assertIn("exported_at", og_headers)
+
+    def test_csv_requires_staff(self):
+        resp = self.client.get("/api/export/csv/")
+        self.assertEqual(resp.status_code, 200)
+        self.client.logout()
+        User = get_user_model()
+        self.client.force_login(User.objects.create_user(pseudonym="u3", password="pw", is_staff=False))
+        resp = self.client.get("/api/export/csv/")
+        self.assertEqual(resp.status_code, 302)
