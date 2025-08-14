@@ -12,14 +12,30 @@ SMART_PROMPT = (
 )
 
 
+def _get_client(api_key: Optional[str] = None) -> Optional[OpenAI]:
+    """Return an OpenAI client using SiteSettings or env fallback."""
+    if api_key:
+        return OpenAI(api_key=api_key)
+    key = None
+    try:
+        from django.apps import apps
+
+        SiteSettings = apps.get_model("config", "SiteSettings")
+        key = SiteSettings.get().openai_api_key
+    except Exception:  # pragma: no cover - Django not ready
+        pass
+    if not key:
+        key = os.getenv("OPENAI_API_KEY")
+    return OpenAI(api_key=key) if key else None
+
+
 def evaluate_smart(text: str, topic: str, client: Optional[OpenAI] = None) -> dict:
     """Bewertet einen Zieltext anhand der SMART-Kriterien über das LLM.
 
     Gibt zusätzlich eine Rückfrage zurück, falls das Ziel noch nicht SMART ist.
     """
     if client is None:
-        key = os.getenv("OPENAI_API_KEY")
-        client = OpenAI(api_key=key) if key else None
+        client = _get_client()
 
     prompt = (
         f"{SMART_PROMPT}\n"
@@ -76,8 +92,7 @@ class AiCoach:
     api_key: Optional[str] = None
 
     def __post_init__(self):
-        key = self.api_key or os.getenv("OPENAI_API_KEY")
-        self.client = OpenAI(api_key=key) if key else None
+        self.client = _get_client(self.api_key)
 
     def ask(self, prompt: str) -> str:
         if not self.client:
@@ -112,8 +127,7 @@ def suggest_next_steps(goal, obstacles: str, client: Optional[OpenAI] = None) ->
     """
 
     if client is None:
-        key = os.getenv("OPENAI_API_KEY")
-        client = OpenAI(api_key=key) if key else None
+        client = _get_client()
 
     goal_text = getattr(goal, "final_text", None) or getattr(goal, "raw_text", "")
     prompt = (
