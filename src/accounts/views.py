@@ -13,6 +13,7 @@ from .models import User
 from .serializers import LoginSerializer, UserSerializer
 from lessons.models import LessonSession, UserSession, Classroom
 from goals.models import Goal
+from reflections.models import Reflection
 
 
 class LoginView(APIView):
@@ -56,10 +57,27 @@ def dashboard(request):
     lesson, _ = LessonSession.objects.get_or_create(date=today, classroom=request.user.classroom)
     user_session, _ = UserSession.objects.get_or_create(user=request.user, lesson_session=lesson)
     can_use_ai = request.user.gruppe == User.VG and lesson.use_ai
+    goals = (
+        Goal.objects
+        .filter(user_session__user=request.user)
+        .select_related("user_session__lesson_session")
+        .prefetch_related("reflection_set")
+        .order_by("-created_at")[:5]
+    )
+    reflections = Reflection.objects.filter(user_session__user=request.user)
+    total = reflections.count()
+    completed = reflections.filter(result="yes").count()
+    completion_rate = int(completed / total * 100) if total else 0
     return render(
         request,
         "dashboard.html",
-        {"user": request.user, "user_session_id": user_session.id, "can_use_ai": can_use_ai},
+        {
+            "user": request.user,
+            "user_session_id": user_session.id,
+            "can_use_ai": can_use_ai,
+            "goals": goals,
+            "completion_rate": completion_rate,
+        },
     )
 
 

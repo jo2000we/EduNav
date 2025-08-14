@@ -10,4 +10,49 @@
     {% endif %}
     <a href="{% url 'reflection' %}" class="bg-blue-500 text-white px-4 py-2 text-center w-full sm:w-auto">Reflexion starten</a>
 </div>
+{% if goals %}
+<h2 class="text-lg mt-6">Vergangene Ziele</h2>
+<div class="overflow-x-auto">
+<table class="min-w-full text-sm">
+    <thead>
+        <tr>
+            <th class="px-2 py-1 text-left">Ziel</th>
+            <th class="px-2 py-1 text-left">Datum</th>
+            <th class="px-2 py-1 text-left">SMART</th>
+            <th class="px-2 py-1 text-left">Reflexion</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for goal in goals %}
+        {% with reflection=goal.reflection_set.first %}
+        <tr class="border-t">
+            <td class="px-2 py-1">{{ goal.final_text|default:goal.raw_text }}</td>
+            <td class="px-2 py-1">{{ goal.user_session.lesson_session.date }}</td>
+            <td class="px-2 py-1">{% if goal.smart_score %}{{ goal.smart_score.overall }}{% else %}-{% endif %}</td>
+            <td class="px-2 py-1">{% if reflection %}{{ reflection.get_result_display }}{% else %}-{% endif %}</td>
+        </tr>
+        {% endwith %}
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+<canvas id="completionChart" class="mt-4"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const rate = {{ completion_rate }};
+new Chart(document.getElementById('completionChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['Erfüllt','Offen'],
+        datasets: [{
+            data: [rate, 100 - rate],
+            backgroundColor: ['#22c55e','#e5e7eb']
+        }]
+    },
+    options: {
+        plugins: { legend: { position: 'bottom' } }
+    }
+});
+</script>
+{% endif %}
 {% endblock %}
