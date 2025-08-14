@@ -46,6 +46,7 @@ function goalCoach(){
                 }).then(r=>r.json()).then(res=>{
                     if(res.final_text){ this.addMessage('assistant', res.final_text); }
                     if(res.smart_score){ this.smart = res.smart_score; }
+                    window.location.href='/dashboard/';
                 });
             }
         },
