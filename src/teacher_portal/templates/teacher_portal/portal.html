@@ -44,6 +44,7 @@
                 </td>
                 <td>{% if c.use_ai %}Yes{% else %}No{% endif %}</td>
                 <td>
+                    <a href="{% url 'teacher_portal:classroom_students' c.id %}" class="bg-green-500 text-white px-2 py-1 mr-2">Students</a>
                     <a href="{% url 'teacher_portal:edit_classroom' c.id %}" class="bg-blue-500 text-white px-2 py-1 mr-2">Edit</a>
                     <form method="post" action="{% url 'teacher_portal:delete_classroom' c.id %}" class="inline">
                         {% csrf_token %}
