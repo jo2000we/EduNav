@@ -1,5 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
+from datetime import timedelta
 
 from accounts.models import User
 from lessons.models import LessonSession, UserSession, Classroom
@@ -62,3 +64,25 @@ class DashboardOverallGoalTests(TestCase):
         self.client.post("/api/overall-goal/", {"text": "Neu"})
         response = self.client.get(reverse("dashboard"))
         self.assertContains(response, "Neu")
+
+
+class DashboardProgressTests(TestCase):
+    def setUp(self):
+        self.classroom = Classroom.objects.create(name="10A")
+        self.user = User.objects.create_user(pseudonym="u1", classroom=self.classroom)
+        self.client.force_login(self.user)
+
+    def test_progress_context_and_rendering(self):
+        lesson = LessonSession.objects.create(date="2024-01-01", classroom=self.classroom)
+        session = UserSession.objects.create(user=self.user, lesson_session=lesson)
+        past_goal = Goal.objects.create(user_session=session, raw_text="alt")
+        Goal.objects.filter(id=past_goal.id).update(created_at=timezone.now() - timedelta(days=1))
+        OverallGoal.objects.create(user=self.user, text="Langfristig")
+        goal1 = Goal.objects.create(user_session=session, raw_text="neu1")
+        Reflection.objects.create(user_session=session, goal=goal1, result="yes", obstacles="", next_step="")
+        Goal.objects.create(user_session=session, raw_text="neu2")
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.context["completed_goals"], 1)
+        self.assertEqual(response.context["open_goals"], 1)
+        self.assertEqual(response.context["completion_rate"], 50)
+        self.assertContains(response, "progressChart")

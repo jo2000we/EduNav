@@ -73,9 +73,18 @@ def dashboard(request):
         .order_by("-created_at")[:5]
     )
     overall_goal = OverallGoal.objects.filter(user=request.user).first()
-    reflections = Reflection.objects.filter(user_session__user=request.user)
-    total = reflections.count()
-    completed = reflections.filter(result="yes").count()
+    if overall_goal:
+        goals_since = Goal.objects.filter(
+            user_session__user=request.user,
+            created_at__gte=overall_goal.created_at,
+        )
+        completed = (
+            Reflection.objects.filter(goal__in=goals_since, result="yes").count()
+        )
+        total = goals_since.count()
+    else:
+        completed = total = 0
+    open_goals = total - completed
     completion_rate = int(completed / total * 100) if total else 0
     return render(
         request,
@@ -86,6 +95,8 @@ def dashboard(request):
             "can_use_ai": can_use_ai,
             "goals": goals,
             "overall_goal": overall_goal,
+            "completed_goals": completed,
+            "open_goals": open_goals,
             "completion_rate": completion_rate,
         },
     )
