@@ -66,6 +66,7 @@ def dashboard(request):
         and lesson.use_ai
         and SiteSettings.get().allow_ai
     )
+    current_goal = Goal.objects.filter(user_session=user_session).first()
     goals = (
         Goal.objects
         .filter(user_session__user=request.user)
@@ -94,6 +95,7 @@ def dashboard(request):
             "user": request.user,
             "user_session_id": user_session.id,
             "can_use_ai": can_use_ai,
+            "current_goal": current_goal,
             "goals": goals,
             "overall_goal": overall_goal,
             "completed_goals": completed,
@@ -137,6 +139,8 @@ def reflection_page(request):
     lesson, _ = LessonSession.objects.get_or_create(date=today, classroom=request.user.classroom)
     user_session, _ = UserSession.objects.get_or_create(user=request.user, lesson_session=lesson)
     goal = Goal.objects.filter(user_session=user_session).first()
+    if goal is None:
+        return redirect("dashboard")
     can_use_ai = (
         request.user.gruppe == User.VG
         and lesson.use_ai

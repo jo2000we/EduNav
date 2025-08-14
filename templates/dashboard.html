@@ -35,9 +35,10 @@
 <div class="flex flex-col sm:flex-row gap-2" id="goal-section">
     {% if can_use_ai %}
     <a href="{% url 'goal_vg' %}" class="bg-green-500 text-white px-4 py-2 text-center w-full sm:w-auto">Ziel setzen</a>
-    <a href="{% url 'reflection' %}" class="bg-blue-500 text-white px-4 py-2 text-center w-full sm:w-auto">Reflexion starten</a>
     {% else %}
     <a href="{% url 'goal_kg' %}" class="bg-green-500 text-white px-4 py-2 text-center w-full sm:w-auto">Ziel setzen</a>
+    {% endif %}
+    {% if current_goal %}
     <a href="{% url 'reflection' %}" class="bg-blue-500 text-white px-4 py-2 text-center w-full sm:w-auto">Reflexion starten</a>
     {% endif %}
 </div>
