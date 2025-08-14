@@ -10,6 +10,36 @@ from reflections.models import Reflection
 from config.models import SiteSettings
 
 
+class GoalVGPageAccessTests(TestCase):
+    def setUp(self):
+        self.classroom = Classroom.objects.create(name="10A", use_ai=True)
+        self.vg_user = User.objects.create_user(
+            pseudonym="vg1", gruppe=User.VG, classroom=self.classroom
+        )
+        self.kg_user = User.objects.create_user(
+            pseudonym="kg1", gruppe=User.KG, classroom=self.classroom
+        )
+
+    def test_vg_user_can_access(self):
+        self.client.force_login(self.vg_user)
+        response = self.client.get(reverse("goal_vg"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("user_session_id", response.context)
+
+    def test_non_vg_user_forbidden(self):
+        self.client.force_login(self.kg_user)
+        response = self.client.get(reverse("goal_vg"))
+        self.assertEqual(response.status_code, 403)
+
+    def test_ai_disabled_forbidden(self):
+        settings = SiteSettings.get()
+        settings.allow_ai = False
+        settings.save()
+        self.client.force_login(self.vg_user)
+        response = self.client.get(reverse("goal_vg"))
+        self.assertEqual(response.status_code, 403)
+
+
 class DashboardHistoryTests(TestCase):
     def setUp(self):
         self.classroom = Classroom.objects.create(name="10A", use_ai=True)
