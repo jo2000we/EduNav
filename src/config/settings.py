@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "goals",
     "reflections",
     "exports",
+    "teacher_portal",
 ]
 
 MIDDLEWARE = [
