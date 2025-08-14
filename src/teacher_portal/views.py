@@ -1,4 +1,5 @@
 from django.contrib.admin.views.decorators import staff_member_required
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.models import User
@@ -41,6 +42,14 @@ def portal(request):
             "classrooms": classrooms,
         },
     )
+
+
+@staff_member_required
+def check_openai_key(request):
+    form = SiteSettingsForm(request.POST)
+    if form.is_valid():
+        return HttpResponse("OK")
+    return HttpResponse("Invalid", status=400)
 
 
 @staff_member_required

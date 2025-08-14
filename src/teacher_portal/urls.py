@@ -6,6 +6,7 @@ app_name = "teacher_portal"
 
 urlpatterns = [
     path("", views.portal, name="portal"),
+    path("validate-key/", views.check_openai_key, name="check_openai_key"),
     path("classroom/<uuid:pk>/edit/", views.edit_classroom, name="edit_classroom"),
     path("classroom/<uuid:pk>/delete/", views.delete_classroom, name="delete_classroom"),
     path(

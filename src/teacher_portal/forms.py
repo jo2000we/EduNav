@@ -1,6 +1,8 @@
 import csv
 import io
 
+import openai
+from openai import OpenAIError
 from django import forms
 
 from accounts.models import User
@@ -15,6 +17,16 @@ class SiteSettingsForm(forms.ModelForm):
         widgets = {
             "openai_api_key": forms.PasswordInput(render_value=True),
         }
+
+    def clean_openai_api_key(self):
+        key = self.cleaned_data.get("openai_api_key")
+        if not key:
+            return key
+        try:
+            openai.OpenAI(api_key=key).models.list()
+        except OpenAIError as exc:
+            raise forms.ValidationError("Invalid OpenAI API key") from exc
+        return key
 
 
 class ClassroomForm(forms.ModelForm):

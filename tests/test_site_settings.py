@@ -6,6 +6,8 @@ from django.test import TestCase
 
 from config.models import SiteSettings
 from goals import services
+from openai import OpenAIError
+from teacher_portal.forms import SiteSettingsForm
 
 
 class DummyClient:
@@ -54,3 +56,12 @@ class OpenAIKeyTests(TestCase):
         mock_openai.return_value = DummyClient(self.payload)
         services.evaluate_smart("Ziel", "Mathe")
         assert mock_openai.call_args.kwargs["api_key"] == "db-key"
+
+
+class SiteSettingsFormTests(TestCase):
+    @patch("teacher_portal.forms.openai")
+    def test_invalid_openai_key(self, mock_openai):
+        mock_openai.OpenAI.return_value.models.list.side_effect = OpenAIError("boom")
+        form = SiteSettingsForm(data={"openai_api_key": "bad", "allow_ai": True})
+        assert not form.is_valid()
+        assert "openai_api_key" in form.errors
