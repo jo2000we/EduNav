@@ -6,7 +6,7 @@ from django.urls import reverse
 from rest_framework.test import APITestCase
 from accounts.models import User
 from lessons.models import LessonSession, UserSession, Classroom
-from goals.models import Goal, KIInteraction
+from goals.models import Goal, KIInteraction, OverallGoal
 from reflections.models import Reflection
 
 class GroupPermissionTests(APITestCase):
@@ -54,6 +54,42 @@ class GoalFinalizeTests(APITestCase):
         last = self.goal.interactions.last()
         self.assertEqual(last.role, "assistant")
         self.assertEqual(last.content, "Finales Ziel")
+
+
+class AiCoachPromptTests(APITestCase):
+    def setUp(self):
+        self.classroom = Classroom.objects.create(name="10A", use_ai=True)
+        self.lesson = LessonSession.objects.create(date="2024-01-01", classroom=self.classroom)
+        self.user = User.objects.create_user(pseudonym="vg", gruppe=User.VG, classroom=self.classroom)
+        self.session = UserSession.objects.create(user=self.user, lesson_session=self.lesson)
+        OverallGoal.objects.create(user=self.user, text="Langfristig Mathe")
+        Goal.objects.create(user_session=self.session, raw_text="Alt", final_text="Älteres Ziel")
+        self.client.force_login(self.user)
+        resp = self.client.post(
+            "/api/vg/goals/", {"user_session": str(self.session.id), "raw_text": "Neu"}
+        )
+        self.goal = Goal.objects.get(id=resp.data["id"])
+
+    @patch("goals.views.evaluate_smart")
+    @patch("goals.services.AiCoach.ask")
+    def test_prompt_contains_history(self, mock_ask, mock_eval):
+        mock_eval.return_value = {
+            "specific": True,
+            "measurable": True,
+            "achievable": True,
+            "relevant": True,
+            "time_bound": True,
+            "score": 5,
+            "question": "",
+        }
+        mock_ask.return_value = "Final"
+        resp = self.client.post(
+            "/api/vg/coach/next/", {"goal_id": str(self.goal.id), "user_reply": "Antwort"}
+        )
+        self.assertEqual(resp.status_code, 200)
+        prompt = mock_ask.call_args[0][0]
+        self.assertIn("Langfristig Mathe", prompt)
+        self.assertIn("Älteres Ziel", prompt)
 
 
 class ExportTests(APITestCase):

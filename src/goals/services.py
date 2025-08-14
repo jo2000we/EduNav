@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Optional, List
 import os
 from openai import OpenAI, OpenAIError
+from .models import Goal, OverallGoal
 
 
 SMART_PROMPT = (
@@ -107,8 +108,30 @@ class AiCoach:
         except OpenAIError:
             return "(Fehler bei KI) Bitte versuche es erneut."
 
+    def _history(self, goal) -> str:
+        user = goal.user_session.user
+        previous = (
+            Goal.objects.filter(user_session__user=user)
+            .exclude(id=goal.id)
+            .order_by("-created_at")[:3]
+        )
+        overall = (
+            OverallGoal.objects.filter(user=user)
+            .order_by("-created_at")
+            .first()
+        )
+        parts: List[str] = []
+        if overall:
+            parts.append(f"Langfristiges Ziel: {overall.text}")
+        if previous:
+            texts = [g.final_text or g.raw_text for g in previous]
+            parts.append("Frühere Ziele: " + " | ".join(texts))
+        return "\n".join(parts)
+
     def _conversation(self, goal) -> str:
-        return "\n".join(i.content for i in goal.interactions.order_by("turn"))
+        history = self._history(goal)
+        convo = "\n".join(i.content for i in goal.interactions.order_by("turn"))
+        return "\n".join([p for p in [history, convo] if p])
 
     def finalize(self, goal, topic: str) -> str:
         conversation = self._conversation(goal)
