@@ -67,6 +67,14 @@ class OverallGoalAPITests(APITestCase):
         self.assertEqual(goal.text, "Neu")
 
 
+class OverallGoalPermissionTests(APITestCase):
+    def test_requires_authentication(self):
+        resp = self.client.get("/api/overall-goal/")
+        self.assertEqual(resp.status_code, 403)
+        resp = self.client.post("/api/overall-goal/", {"text": "x"})
+        self.assertEqual(resp.status_code, 403)
+
+
 class GoalFinalizeTests(APITestCase):
     def setUp(self):
         self.classroom = Classroom.objects.create(name="10A", use_ai=True)
