@@ -3,15 +3,16 @@ from unittest.mock import patch
 from rest_framework.test import APITestCase
 
 from accounts.models import User
-from lessons.models import LessonSession, UserSession
+from lessons.models import LessonSession, UserSession, Classroom
 from goals.models import Goal
 from reflections.models import Reflection
 
 
 class NextStepSuggestTests(APITestCase):
     def setUp(self):
-        self.lesson = LessonSession.objects.create(date="2024-01-01", use_ai=True)
-        self.user = User.objects.create_user(pseudonym="vg", gruppe=User.VG)
+        self.classroom = Classroom.objects.create(name="10A", use_ai=True)
+        self.lesson = LessonSession.objects.create(date="2024-01-01", classroom=self.classroom)
+        self.user = User.objects.create_user(pseudonym="vg", gruppe=User.VG, classroom=self.classroom)
         self.session = UserSession.objects.create(user=self.user, lesson_session=self.lesson)
         self.goal = Goal.objects.create(
             user_session=self.session, raw_text="Test", final_text="Test"
