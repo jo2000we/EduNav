@@ -6,11 +6,28 @@ from rest_framework.views import APIView
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 
-from .models import Goal, KIInteraction
-from .serializers import GoalSerializer
+from .models import Goal, KIInteraction, OverallGoal
+from .serializers import GoalSerializer, OverallGoalSerializer
 from .services import evaluate_smart, AiCoach
 from .permissions import IsVGUser
 from lessons.models import UserSession
+
+
+class OverallGoalView(APIView):
+    def get(self, request):
+        goal = OverallGoal.objects.filter(user=request.user).first()
+        if not goal:
+            return Response({})
+        return Response(OverallGoalSerializer(goal).data)
+
+    def post(self, request):
+        serializer = OverallGoalSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        goal, created = OverallGoal.objects.update_or_create(
+            user=request.user, defaults={"text": serializer.validated_data["text"]}
+        )
+        status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        return Response(OverallGoalSerializer(goal).data, status=status_code)
 
 
 class GoalCreateKGView(generics.CreateAPIView):

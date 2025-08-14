@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Goal, KIInteraction
+from .models import Goal, KIInteraction, OverallGoal
 
 class GoalSerializer(serializers.ModelSerializer):
     class Meta:
@@ -12,3 +12,10 @@ class KIInteractionSerializer(serializers.ModelSerializer):
         model = KIInteraction
         fields = ["id", "goal", "turn", "role", "content", "created_at"]
         read_only_fields = ["goal", "turn", "created_at"]
+
+
+class OverallGoalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OverallGoal
+        fields = ["id", "text", "created_at"]
+        read_only_fields = ["id", "created_at"]

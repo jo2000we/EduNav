@@ -2,6 +2,17 @@
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 <h1 class="text-xl mb-4">Hallo {{ user.pseudonym }} ({{ user.gruppe }})</h1>
+{% if overall_goal %}
+<div class="mb-4">
+    <h2 class="text-lg">Aktuelles Gesamtziel</h2>
+    <p class="mb-2">{{ overall_goal.text }}</p>
+    <a href="{% url 'overall_goal' %}" class="text-blue-500 underline">Bearbeiten</a>
+</div>
+{% else %}
+<div class="mb-4">
+    <a href="{% url 'overall_goal' %}" class="text-blue-500 underline">Gesamtziel festlegen</a>
+</div>
+{% endif %}
 <div class="flex flex-col sm:flex-row gap-2" id="goal-section">
     {% if can_use_ai %}
     <a href="{% url 'goal_vg' %}" class="bg-green-500 text-white px-4 py-2 text-center w-full sm:w-auto">Ziel setzen</a>
