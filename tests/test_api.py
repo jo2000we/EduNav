@@ -41,6 +41,26 @@ class GroupPermissionTests(APITestCase):
         self.assertEqual(resp.status_code, 403)
 
 
+class OverallGoalAPITests(APITestCase):
+    def setUp(self):
+        self.classroom = Classroom.objects.create(name="10A")
+        self.user = User.objects.create_user(pseudonym="u1", classroom=self.classroom)
+        self.client.force_login(self.user)
+
+    def test_create_overall_goal(self):
+        resp = self.client.post("/api/overall-goal/", {"text": "Langfristig lernen"})
+        self.assertEqual(resp.status_code, 201)
+        goal = OverallGoal.objects.get(user=self.user)
+        self.assertEqual(goal.text, "Langfristig lernen")
+
+    def test_update_overall_goal(self):
+        goal = OverallGoal.objects.create(user=self.user, text="Alt")
+        resp = self.client.post("/api/overall-goal/", {"text": "Neu"})
+        self.assertEqual(resp.status_code, 200)
+        goal.refresh_from_db()
+        self.assertEqual(goal.text, "Neu")
+
+
 class GoalFinalizeTests(APITestCase):
     def setUp(self):
         self.classroom = Classroom.objects.create(name="10A", use_ai=True)

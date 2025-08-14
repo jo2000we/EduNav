@@ -3,7 +3,7 @@ from django.urls import reverse
 
 from accounts.models import User
 from lessons.models import LessonSession, UserSession, Classroom
-from goals.models import Goal
+from goals.models import Goal, OverallGoal
 from reflections.models import Reflection
 from config.models import SiteSettings
 
@@ -43,3 +43,22 @@ class DashboardAiToggleTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.context["can_use_ai"])
         self.assertNotIn("Reflexion starten", response.content.decode())
+
+
+class DashboardOverallGoalTests(TestCase):
+    def setUp(self):
+        self.classroom = Classroom.objects.create(name="10A")
+        self.user = User.objects.create_user(pseudonym="u1", classroom=self.classroom)
+        self.client.force_login(self.user)
+
+    def test_overall_goal_displayed(self):
+        OverallGoal.objects.create(user=self.user, text="Langfristig")
+        response = self.client.get(reverse("dashboard"))
+        self.assertContains(response, "Langfristig")
+        self.assertContains(response, reverse("overall_goal"))
+
+    def test_overall_goal_update_reflected_on_dashboard(self):
+        OverallGoal.objects.create(user=self.user, text="Alt")
+        self.client.post("/api/overall-goal/", {"text": "Neu"})
+        response = self.client.get(reverse("dashboard"))
+        self.assertContains(response, "Neu")

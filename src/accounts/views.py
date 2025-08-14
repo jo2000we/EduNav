@@ -12,7 +12,7 @@ from rest_framework.permissions import AllowAny
 from .models import User
 from .serializers import LoginSerializer, UserSerializer
 from lessons.models import LessonSession, UserSession, Classroom
-from goals.models import Goal
+from goals.models import Goal, OverallGoal
 from reflections.models import Reflection
 from config.models import SiteSettings
 
@@ -72,6 +72,7 @@ def dashboard(request):
         .prefetch_related("reflection_set")
         .order_by("-created_at")[:5]
     )
+    overall_goal = OverallGoal.objects.filter(user=request.user).first()
     reflections = Reflection.objects.filter(user_session__user=request.user)
     total = reflections.count()
     completed = reflections.filter(result="yes").count()
@@ -84,6 +85,7 @@ def dashboard(request):
             "user_session_id": user_session.id,
             "can_use_ai": can_use_ai,
             "goals": goals,
+            "overall_goal": overall_goal,
             "completion_rate": completion_rate,
         },
     )
@@ -103,6 +105,12 @@ def goal_kg_page(request):
     lesson, _ = LessonSession.objects.get_or_create(date=today, classroom=request.user.classroom)
     user_session, _ = UserSession.objects.get_or_create(user=request.user, lesson_session=lesson)
     return render(request, "goal_kg.html", {"user_session_id": user_session.id})
+
+
+@login_required
+def overall_goal_page(request):
+    goal = OverallGoal.objects.filter(user=request.user).first()
+    return render(request, "overall_goal.html", {"goal": goal})
 
 
 @login_required

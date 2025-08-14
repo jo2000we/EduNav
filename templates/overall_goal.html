@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}Gesamtziel{% endblock %}
+{% block content %}
+<h1 class="text-xl mb-4">Gesamtziel festlegen</h1>
+<form hx-post="/api/overall-goal/" hx-swap="none" @htmx:afterRequest="window.location.href='{% url 'dashboard' %}'" class="space-y-2">
+    <textarea name="text" class="w-full border p-2" rows="4">{{ goal.text|default:"" }}</textarea>
+    <button type="submit" class="bg-green-500 text-white px-4 py-2">Speichern</button>
+</form>
+{% endblock %}
