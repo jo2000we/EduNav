@@ -7,6 +7,25 @@
     <h2 class="text-lg">Aktuelles Gesamtziel</h2>
     <p class="mb-2">{{ overall_goal.text }}</p>
     <a href="{% url 'overall_goal' %}" class="text-blue-500 underline">Bearbeiten</a>
+    <canvas id="progressChart" class="mt-4"></canvas>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+    const completed = {{ completed_goals }};
+    const open = {{ open_goals }};
+    new Chart(document.getElementById('progressChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Erfüllt','Offen'],
+            datasets: [{
+                data: [completed, open],
+                backgroundColor: ['#22c55e','#e5e7eb']
+            }]
+        },
+        options: {
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+    </script>
 </div>
 {% else %}
 <div class="mb-4">
@@ -55,23 +74,5 @@
     </tbody>
 </table>
 </div>
-<canvas id="completionChart" class="mt-4"></canvas>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-const rate = {{ completion_rate }};
-new Chart(document.getElementById('completionChart'), {
-    type: 'doughnut',
-    data: {
-        labels: ['Erfüllt','Offen'],
-        datasets: [{
-            data: [rate, 100 - rate],
-            backgroundColor: ['#22c55e','#e5e7eb']
-        }]
-    },
-    options: {
-        plugins: { legend: { position: 'bottom' } }
-    }
-});
-</script>
 {% endif %}
 {% endblock %}
