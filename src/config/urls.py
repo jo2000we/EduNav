@@ -15,6 +15,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from exports.admin import DashboardView
 from accounts.views import (
     login_page,
     dashboard,
@@ -24,6 +25,7 @@ from accounts.views import (
 )
 
 urlpatterns = [
+    path("admin/exports/dashboard/", DashboardView.as_view(), name="exports-dashboard"),
     path("admin/", admin.site.urls),
     path("", login_page, name="login"),
     path("dashboard/", dashboard, name="dashboard"),
