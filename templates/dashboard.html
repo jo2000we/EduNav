@@ -2,79 +2,73 @@
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 <h1 class="text-xl mb-4">Hallo {{ user.pseudonym }} ({{ user.gruppe }})</h1>
-{% if overall_goal %}
-<div class="mb-4">
-    <h2 class="text-lg">Aktuelles Gesamtziel</h2>
-    <p class="mb-2">{{ overall_goal.text }}</p>
-    <a href="{% url 'overall_goal' %}" class="text-blue-500 underline">Bearbeiten</a>
-    <canvas id="progressChart" class="mt-4"></canvas>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-    const completed = {{ completed_goals }};
-    const open = {{ open_goals }};
-    new Chart(document.getElementById('progressChart'), {
-        type: 'doughnut',
-        data: {
-            labels: ['Erfüllt','Offen'],
-            datasets: [{
-                data: [completed, open],
-                backgroundColor: ['#22c55e','#e5e7eb']
-            }]
-        },
-        options: {
-            plugins: { legend: { position: 'bottom' } }
-        }
-    });
-    </script>
-</div>
-{% else %}
-<div class="mb-4">
-    <a href="{% url 'overall_goal' %}" class="text-blue-500 underline">Gesamtziel festlegen</a>
-</div>
-{% endif %}
-<div class="flex flex-col sm:flex-row gap-2" id="goal-section">
-    {% if can_use_ai %}
-    <a href="{% url 'goal_vg' %}" class="bg-green-500 text-white px-4 py-2 text-center w-full sm:w-auto">Ziel setzen</a>
+<div class="grid gap-4">
+    {% if overall_goal %}
+    <div class="p-4 bg-white rounded shadow">
+        <h2 class="text-lg mb-2">Aktuelles Gesamtziel</h2>
+        <p class="mb-2">{{ overall_goal.text }}</p>
+        <a href="{% url 'overall_goal' %}" class="text-blue-500 underline">Bearbeiten</a>
+        <canvas id="progressChart" class="mt-4"></canvas>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+        const completed = {{ completed_goals }};
+        const open = {{ open_goals }};
+        new Chart(document.getElementById('progressChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Erfüllt','Offen'],
+                datasets: [{
+                    data: [completed, open],
+                    backgroundColor: ['#22c55e','#e5e7eb']
+                }]
+            },
+            options: {
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+        </script>
+    </div>
     {% else %}
-    <a href="{% url 'goal_kg' %}" class="bg-green-500 text-white px-4 py-2 text-center w-full sm:w-auto">Ziel setzen</a>
+    <div class="p-4 bg-white rounded shadow">
+        <a href="{% url 'overall_goal' %}" class="text-blue-500 underline">Gesamtziel festlegen</a>
+    </div>
     {% endif %}
-    {% if current_goal %}
-    <a href="{% url 'reflection' %}" class="bg-blue-500 text-white px-4 py-2 text-center w-full sm:w-auto">Reflexion starten</a>
-    {% endif %}
-</div>
-{% if goals %}
-<h2 class="text-lg mt-6">Vergangene Ziele</h2>
-<div class="overflow-x-auto">
-<table class="min-w-full text-sm">
-    <thead>
-        <tr>
-            <th class="px-2 py-1 text-left">Ziel</th>
-            <th class="px-2 py-1 text-left">Datum</th>
-            <th class="px-2 py-1 text-left">SMART</th>
-            <th class="px-2 py-1 text-left">Reflexion</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for goal in goals %}
-        {% with reflection=goal.reflection_set.first %}
-        <tr class="border-t">
-            <td class="px-2 py-1">{{ goal.final_text|default:goal.raw_text }}</td>
-            <td class="px-2 py-1">{{ goal.user_session.lesson_session.date }}</td>
-            <td class="px-2 py-1">
-                {% if goal.smart_score %}
-                    {% if goal.smart_score.overall %}
-                        {{ goal.smart_score.overall }}
-                    {% elif goal.smart_score.score %}
-                        {{ goal.smart_score.score }}
+
+    <div class="grid gap-2 sm:grid-cols-2" id="goal-section">
+        {% if can_use_ai %}
+        <a href="{% url 'goal_vg' %}" class="bg-green-500 text-white px-4 py-2 text-center rounded transition hover:bg-green-600">Ziel setzen</a>
+        {% else %}
+        <a href="{% url 'goal_kg' %}" class="bg-green-500 text-white px-4 py-2 text-center rounded transition hover:bg-green-600">Ziel setzen</a>
+        {% endif %}
+        {% if current_goal %}
+        <a href="{% url 'reflection' %}" class="bg-blue-500 text-white px-4 py-2 text-center rounded transition hover:bg-blue-600">Reflexion starten</a>
+        {% endif %}
+    </div>
+
+    {% if goals %}
+    <div>
+        <h2 class="text-lg mb-2">Vergangene Ziele</h2>
+        <div class="grid gap-4 sm:grid-cols-2">
+            {% for goal in goals %}
+            {% with reflection=goal.reflection_set.first %}
+            <div class="p-4 bg-white rounded shadow text-sm transition hover:shadow-lg">
+                <div class="font-semibold">{{ goal.final_text|default:goal.raw_text }}</div>
+                <div class="text-gray-600">{{ goal.user_session.lesson_session.date }}</div>
+                <div>SMART:
+                    {% if goal.smart_score %}
+                        {% if goal.smart_score.overall %}
+                            {{ goal.smart_score.overall }}
+                        {% elif goal.smart_score.score %}
+                            {{ goal.smart_score.score }}
+                        {% else %}-{% endif %}
                     {% else %}-{% endif %}
-                {% else %}-{% endif %}
-            </td>
-            <td class="px-2 py-1">{% if reflection %}{{ reflection.get_result_display }}{% else %}-{% endif %}</td>
-        </tr>
-        {% endwith %}
-        {% endfor %}
-    </tbody>
-</table>
+                </div>
+                <div>Reflexion: {% if reflection %}{{ reflection.get_result_display }}{% else %}-{% endif %}</div>
+            </div>
+            {% endwith %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 </div>
-{% endif %}
 {% endblock %}
