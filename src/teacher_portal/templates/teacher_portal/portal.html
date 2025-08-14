@@ -5,78 +5,71 @@
 {% block content %}
 <h1 class="text-2xl mb-4">Teacher Portal</h1>
 
-<div class="mb-8">
-    <h2 class="text-xl mb-2">Site Settings</h2>
-    <form method="post">
-        {% csrf_token %}
-        <div x-data="{msg: '', ok: null}" @htmx:afterRequest="ok = $event.detail.xhr.status === 200; msg = ok ? 'API key valid' : 'API key invalid'" class="space-y-2">
-            <div>
-                {{ settings_form.allow_ai.label_tag }} {{ settings_form.allow_ai }}
-                {% if settings_form.allow_ai.errors %}
-                    <p class="text-red-500">{{ settings_form.allow_ai.errors.0 }}</p>
-                {% endif %}
-            </div>
-            <div>
-                {{ settings_form.openai_api_key.label_tag }}
-                <div class="flex items-center gap-2">
-                    {{ settings_form.openai_api_key }}
-                    <button type="button" class="bg-gray-500 text-white px-2 py-1"
-                            hx-post="{% url 'teacher_portal:check_openai_key' %}"
-                            hx-include="[name='openai_api_key']"
-                            hx-swap="none">Test</button>
-                    <span x-show="msg" x-text="msg" :class="ok ? 'text-green-600' : 'text-red-600'"></span>
+<div class="grid gap-6">
+    <div class="bg-white p-4 rounded shadow">
+        <h2 class="text-xl mb-2">Site Settings</h2>
+        <form method="post" x-data="{saved:false}" @submit.prevent="$el.submit(); saved=true; setTimeout(()=>saved=false,2000)">
+            {% csrf_token %}
+            <div x-data="{msg: '', ok: null}" @htmx:afterRequest="ok = $event.detail.xhr.status === 200; msg = ok ? 'API key valid' : 'API key invalid'" class="space-y-2">
+                <div>
+                    {{ settings_form.allow_ai.label_tag }} {{ settings_form.allow_ai }}
+                    {% if settings_form.allow_ai.errors %}
+                        <p class="text-red-500">{{ settings_form.allow_ai.errors.0 }}</p>
+                    {% endif %}
                 </div>
-                {% if settings_form.openai_api_key.errors %}
-                    <p class="text-red-500">{{ settings_form.openai_api_key.errors.0 }}</p>
-                {% endif %}
+                <div>
+                    {{ settings_form.openai_api_key.label_tag }}
+                    <div class="flex items-center gap-2">
+                        {{ settings_form.openai_api_key }}
+                        <button type="button" class="bg-gray-500 text-white px-2 py-1"
+                                hx-post="{% url 'teacher_portal:check_openai_key' %}"
+                                hx-include="[name='openai_api_key']"
+                                hx-swap="none">Test</button>
+                        <span x-show="msg" x-text="msg" x-transition :class="ok ? 'text-green-600' : 'text-red-600'"></span>
+                    </div>
+                    {% if settings_form.openai_api_key.errors %}
+                        <p class="text-red-500">{{ settings_form.openai_api_key.errors.0 }}</p>
+                    {% endif %}
+                </div>
             </div>
-        </div>
-        <button type="submit" name="save_settings" class="bg-blue-500 text-white px-4 py-2 mt-2">Save</button>
-    </form>
-</div>
+            <p x-show="saved" x-transition class="text-green-600">Gespeichert</p>
+            <button type="submit" name="save_settings" class="bg-blue-500 text-white px-4 py-2 mt-2 rounded transition hover:bg-blue-600">Save</button>
+        </form>
+    </div>
 
-<div>
-    <h2 class="text-xl mb-2">Classrooms</h2>
-    <form method="post" class="mb-4">
-        {% csrf_token %}
-        {{ classroom_form.as_p }}
-        <button type="submit" name="add_classroom" class="bg-green-500 text-white px-4 py-2">Add Classroom</button>
-    </form>
-    <table class="min-w-full">
-        <thead>
-            <tr>
-                <th class="text-left">Name</th>
-                <th class="text-left">Code</th>
-                <th class="text-left">AI</th>
-                <th class="text-left">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
+    <div class="bg-white p-4 rounded shadow">
+        <h2 class="text-xl mb-2">Classrooms</h2>
+        <form method="post" class="mb-4" x-data="{added:false}" @submit.prevent="$el.submit(); added=true; setTimeout(()=>added=false,2000)">
+            {% csrf_token %}
+            {{ classroom_form.as_p }}
+            <p x-show="added" x-transition class="text-green-600">Classroom added</p>
+            <button type="submit" name="add_classroom" class="bg-green-500 text-white px-4 py-2 rounded transition hover:bg-green-600">Add Classroom</button>
+        </form>
+        <div class="grid gap-4 md:grid-cols-2">
             {% for c in classrooms %}
-            <tr>
-                <td>{{ c.name }}</td>
-                <td>
-                    <span>{{ c.code }}</span>
-                    <button type="button" onclick="navigator.clipboard.writeText('{{ c.code }}')" class="bg-gray-200 px-2 py-1 ml-2">Copy</button>
+            <div class="p-4 border rounded shadow transition hover:shadow-lg">
+                <div class="font-semibold mb-2">{{ c.name }}</div>
+                <div class="text-sm mb-2">Code: <span>{{ c.code }}</span>
+                    <button type="button" onclick="navigator.clipboard.writeText('{{ c.code }}')" class="bg-gray-200 px-2 py-1 ml-2 rounded">Copy</button>
                     <form method="post" action="{% url 'teacher_portal:regenerate_classroom_code' c.id %}" class="inline">
                         {% csrf_token %}
-                        <button type="submit" class="bg-yellow-500 text-white px-2 py-1 ml-2">Regenerate</button>
+                        <button type="submit" class="bg-yellow-500 text-white px-2 py-1 ml-2 rounded">Regenerate</button>
                     </form>
-                </td>
-                <td>{% if c.use_ai %}Yes{% else %}No{% endif %}</td>
-                <td>
-                    <a href="{% url 'teacher_portal:classroom_students' c.id %}" class="bg-green-500 text-white px-2 py-1 mr-2">Students</a>
-                    <a href="{% url 'teacher_portal:edit_classroom' c.id %}" class="bg-blue-500 text-white px-2 py-1 mr-2">Edit</a>
+                </div>
+                <div class="text-sm mb-2">AI: {% if c.use_ai %}Yes{% else %}No{% endif %}</div>
+                <div class="flex flex-wrap gap-2 text-sm">
+                    <a href="{% url 'teacher_portal:classroom_students' c.id %}" class="bg-green-500 text-white px-2 py-1 rounded">Students</a>
+                    <a href="{% url 'teacher_portal:edit_classroom' c.id %}" class="bg-blue-500 text-white px-2 py-1 rounded">Edit</a>
                     <form method="post" action="{% url 'teacher_portal:delete_classroom' c.id %}" class="inline">
                         {% csrf_token %}
-                        <button type="submit" class="bg-red-500 text-white px-2 py-1">Delete</button>
+                        <button type="submit" class="bg-red-500 text-white px-2 py-1 rounded">Delete</button>
                     </form>
-                </td>
-            </tr>
+                </div>
+            </div>
             {% empty %}
-            <tr><td colspan="4">No classrooms yet.</td></tr>
+            <p>No classrooms yet.</p>
             {% endfor %}
-        </tbody>
-    </table>
+        </div>
+    </div>
 </div>
 {% endblock %}

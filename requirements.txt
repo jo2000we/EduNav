@@ -4,3 +4,5 @@ django-environ
 openai
 openpyxl
 cryptography
+selenium>=4.0,<5.0
+webdriver-manager
