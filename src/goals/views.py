@@ -72,20 +72,23 @@ class CoachNextView(APIView):
         turn = goal.interactions.count() + 1
         coach = AiCoach()
         if user_reply:
-            KIInteraction.objects.create(goal=goal, turn=turn, role="user", content=user_reply)
+            KIInteraction.objects.create(
+                goal=goal, turn=turn, role="user", content=user_reply
+            )
             turn += 1
-        conversation = coach._conversation(goal)
-        result = evaluate_smart(conversation, topic)
-        goal.smart_score = {k: result[k] for k in [
-            "specific",
-            "measurable",
-            "achievable",
-            "relevant",
-            "time_bound",
-            "overall",
-        ]}
+
+        last_user_text = goal.interactions.filter(role="user").last().content
+        result = evaluate_smart(last_user_text, topic)
+
+        fields = ["specific", "measurable", "achievable", "relevant", "time_bound"]
+        smart = goal.smart_score or {k: False for k in fields}
+        for k in fields:
+            smart[k] = smart.get(k, False) or result[k]
+        smart["overall"] = sum(smart[k] for k in fields)
+        goal.smart_score = smart
         goal.save()
-        if result["overall"] == 5:
+
+        if smart["overall"] == 5:
             answer = coach.finalize(goal, topic)
             status_flag = "ready_to_finalize"
         else:

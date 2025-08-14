@@ -121,6 +121,62 @@ class AiCoachPromptTests(APITestCase):
         self.assertIn("Älteres Ziel", prompt)
 
 
+class CoachNextEvaluationTests(APITestCase):
+    def setUp(self):
+        self.classroom = Classroom.objects.create(name="10A", use_ai=True)
+        self.lesson = LessonSession.objects.create(
+            date="2024-01-01", classroom=self.classroom
+        )
+        self.user = User.objects.create_user(
+            pseudonym="vg", gruppe=User.VG, classroom=self.classroom
+        )
+        self.session = UserSession.objects.create(
+            user=self.user, lesson_session=self.lesson
+        )
+        self.client.force_login(self.user)
+        self.goal = Goal.objects.create(
+            user_session=self.session,
+            raw_text="Erstes Ziel",
+            smart_score={
+                "specific": True,
+                "measurable": False,
+                "achievable": False,
+                "relevant": False,
+                "time_bound": False,
+                "overall": 1,
+            },
+        )
+        KIInteraction.objects.create(
+            goal=self.goal, turn=1, role="user", content="Erstes Ziel"
+        )
+        KIInteraction.objects.create(
+            goal=self.goal, turn=2, role="assistant", content="Frage 1?"
+        )
+
+    @patch("goals.views.evaluate_smart")
+    def test_only_last_user_message_evaluated(self, mock_eval):
+        mock_eval.return_value = {
+            "specific": False,
+            "measurable": True,
+            "achievable": False,
+            "relevant": False,
+            "time_bound": False,
+            "overall": 1,
+            "question": "Mehr Details?",
+        }
+        resp = self.client.post(
+            "/api/vg/coach/next/",
+            {"goal_id": str(self.goal.id), "user_reply": "Zweite Antwort"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        mock_eval.assert_called_once()
+        self.assertEqual(mock_eval.call_args[0][0], "Zweite Antwort")
+        self.goal.refresh_from_db()
+        self.assertTrue(self.goal.smart_score["specific"])
+        self.assertTrue(self.goal.smart_score["measurable"])
+        self.assertEqual(self.goal.smart_score["overall"], 2)
+
+
 class ExportTests(APITestCase):
     def setUp(self):
         self.staff = User.objects.create_user(
