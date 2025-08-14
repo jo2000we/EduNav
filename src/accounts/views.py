@@ -33,11 +33,14 @@ class LoginView(APIView):
                     {"class_code": ["Classroom not found."]},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-        user, created = User.objects.get_or_create(
-            pseudonym=pseudonym,
-            defaults={"classroom": classroom, "gruppe": User.KG},
-        )
-        if classroom and not created and user.classroom != classroom:
+        try:
+            user = User.objects.get(pseudonym=pseudonym)
+        except User.DoesNotExist:
+            return Response(
+                {"pseudonym": ["User not found."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if classroom and user.classroom != classroom:
             user.classroom = classroom
             user.save()
         # Login user via session
@@ -124,14 +127,14 @@ def login_page(request):
                 except Classroom.DoesNotExist:
                     error = "Klasse existiert nicht."
             if not error:
-                user, _ = User.objects.get_or_create(
-                    pseudonym=pseudonym,
-                    defaults={"classroom": classroom, "gruppe": User.KG},
-                )
-                if classroom and user.classroom != classroom:
-                    user.classroom = classroom
-                    user.save()
-                user.backend = "django.contrib.auth.backends.ModelBackend"
-                login(request, user)
-                return redirect("dashboard")
+                try:
+                    user = User.objects.get(pseudonym=pseudonym)
+                    if classroom and user.classroom != classroom:
+                        user.classroom = classroom
+                        user.save()
+                    user.backend = "django.contrib.auth.backends.ModelBackend"
+                    login(request, user)
+                    return redirect("dashboard")
+                except User.DoesNotExist:
+                    error = "Benutzer nicht gefunden."
     return render(request, "login.html", {"error": error})
