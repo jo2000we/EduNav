@@ -37,14 +37,29 @@ class DashboardAiToggleTests(TestCase):
         )
         self.client.force_login(self.user)
 
-    def test_ai_buttons_hidden_when_disabled(self):
+    def test_reflection_button_visible_when_ai_disabled(self):
         settings = SiteSettings.get()
         settings.allow_ai = False
         settings.save()
         response = self.client.get(reverse("dashboard"))
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.context["can_use_ai"])
-        self.assertNotIn("Reflexion starten", response.content.decode())
+        self.assertIn("Reflexion starten", response.content.decode())
+
+
+class DashboardKgReflectionLinkTests(TestCase):
+    def setUp(self):
+        self.classroom = Classroom.objects.create(name="10A", use_ai=True)
+        self.user = User.objects.create_user(
+            pseudonym="kg1", gruppe=User.KG, classroom=self.classroom
+        )
+        self.client.force_login(self.user)
+
+    def test_kg_user_sees_reflection_link(self):
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context["can_use_ai"])
+        self.assertIn("Reflexion starten", response.content.decode())
 
 
 class DashboardOverallGoalTests(TestCase):
