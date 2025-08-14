@@ -28,7 +28,15 @@
         <tr class="border-t">
             <td class="px-2 py-1">{{ goal.final_text|default:goal.raw_text }}</td>
             <td class="px-2 py-1">{{ goal.user_session.lesson_session.date }}</td>
-            <td class="px-2 py-1">{% if goal.smart_score %}{{ goal.smart_score.overall }}{% else %}-{% endif %}</td>
+            <td class="px-2 py-1">
+                {% if goal.smart_score %}
+                    {% if goal.smart_score.overall %}
+                        {{ goal.smart_score.overall }}
+                    {% elif goal.smart_score.score %}
+                        {{ goal.smart_score.score }}
+                    {% else %}-{% endif %}
+                {% else %}-{% endif %}
+            </td>
             <td class="px-2 py-1">{% if reflection %}{{ reflection.get_result_display }}{% else %}-{% endif %}</td>
         </tr>
         {% endwith %}
