@@ -1,95 +1,96 @@
 {% extends "base.html" %}
-
+{% load form_tags %}
 {% block title %}Teacher Portal{% endblock %}
-
 {% block content %}
-<h1 class="text-2xl mb-4">Teacher Portal</h1>
+<h1 class="text-2xl md:text-3xl font-semibold tracking-tight mb-6">Teacher Portal</h1>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<div x-data="{tab: 'settings'}">
-    <nav class="mb-4 flex gap-4 border-b">
-        <button @click="tab='settings'" :class="{'font-bold border-b-2': tab==='settings'}">Einstellungen</button>
-        <button @click="tab='export'" :class="{'font-bold border-b-2': tab==='export'}">Datenexport</button>
-        <button @click="tab='analysis'" :class="{'font-bold border-b-2': tab==='analysis'}">Auswertung</button>
+<div x-data="{tab: 'settings'}" class="grid gap-6">
+    <nav class="flex gap-4 border-b">
+        <button @click="tab='settings'" :class="{'font-bold border-b-2 border-emerald-500': tab==='settings'}" class="px-2 py-2">Einstellungen</button>
+        <button @click="tab='export'" :class="{'font-bold border-b-2 border-emerald-500': tab==='export'}" class="px-2 py-2">Datenexport</button>
+        <button @click="tab='analysis'" :class="{'font-bold border-b-2 border-emerald-500': tab==='analysis'}" class="px-2 py-2">Auswertung</button>
     </nav>
 
     <div x-show="tab==='settings'" class="grid gap-6">
-        <div class="bg-white p-4 rounded shadow">
-            <h2 class="text-xl mb-2">Site Settings</h2>
-            <form method="post" x-data="{saved:false}" @submit.prevent="$el.submit(); saved=true; setTimeout(()=>saved=false,2000)">
+        <section class="card">
+            <h2 class="text-lg md:text-xl font-semibold mb-3">Site Settings</h2>
+            <form method="post" x-data="{saved:false}" @submit.prevent="$el.submit(); saved=true; setTimeout(()=>saved=false,2000)" class="grid gap-4 md:gap-5">
                 {% csrf_token %}
-                <div x-data="{msg: '', ok: null}" @htmx:afterRequest="ok = $event.detail.xhr.status === 200; msg = ok ? 'API key valid' : 'API key invalid'" class="space-y-2">
+                <div x-data="{msg: '', ok: null}" @htmx:afterRequest="ok = $event.detail.xhr.status === 200; msg = ok ? 'API key valid' : 'API key invalid'" class="grid gap-4 md:gap-5">
                     <div>
                         {{ settings_form.allow_ai.label_tag }} {{ settings_form.allow_ai }}
-                        {% if settings_form.allow_ai.errors %}
-                            <p class="text-red-500">{{ settings_form.allow_ai.errors.0 }}</p>
-                        {% endif %}
+                        {% if settings_form.allow_ai.errors %}<p class="text-red-500 text-sm">{{ settings_form.allow_ai.errors.0 }}</p>{% endif %}
                     </div>
                     <div>
                         {{ settings_form.openai_api_key.label_tag }}
                         <div class="flex items-center gap-2">
-                            {{ settings_form.openai_api_key }}
-                            <button type="button" class="bg-gray-500 text-white px-2 py-1"
+                            {{ settings_form.openai_api_key|add_class:"w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" }}
+                            <button type="button" class="btn-ghost"
                                     hx-post="{% url 'teacher_portal:check_openai_key' %}"
                                     hx-include="[name='openai_api_key']"
                                     hx-swap="none">Test</button>
-                            <span x-show="msg" x-text="msg" x-transition :class="ok ? 'text-green-600' : 'text-red-600'"></span>
+                            <span x-show="msg" x-text="msg" x-transition :class="ok ? 'text-emerald-600' : 'text-red-600'"></span>
                         </div>
-                        {% if settings_form.openai_api_key.errors %}
-                            <p class="text-red-500">{{ settings_form.openai_api_key.errors.0 }}</p>
-                        {% endif %}
+                        {% if settings_form.openai_api_key.errors %}<p class="text-red-500 text-sm">{{ settings_form.openai_api_key.errors.0 }}</p>{% endif %}
                     </div>
                 </div>
-                <p x-show="saved" x-transition class="text-green-600">Gespeichert</p>
-                <button type="submit" name="save_settings" class="bg-blue-500 text-white px-4 py-2 mt-2 rounded transition hover:bg-blue-600">Save</button>
+                <p x-show="saved" x-transition class="text-emerald-600">Gespeichert</p>
+                <button type="submit" name="save_settings" class="btn-primary mt-2">Save</button>
             </form>
-        </div>
+        </section>
 
-        <div class="bg-white p-4 rounded shadow">
-            <h2 class="text-xl mb-2">Classrooms</h2>
-            <form method="post" class="mb-4" x-data="{added:false}" @submit.prevent="$el.submit(); added=true; setTimeout(()=>added=false,2000)">
+        <section class="card">
+            <h2 class="text-lg md:text-xl font-semibold mb-3">Classrooms</h2>
+            <form method="post" class="grid gap-4 md:gap-5 mb-4" x-data="{added:false}" @submit.prevent="$el.submit(); added=true; setTimeout(()=>added=false,2000)">
                 {% csrf_token %}
-                {{ classroom_form.as_p }}
-                <p x-show="added" x-transition class="text-green-600">Classroom added</p>
-                <button type="submit" name="add_classroom" class="bg-green-500 text-white px-4 py-2 rounded transition hover:bg-green-600">Add Classroom</button>
+                {% for field in classroom_form %}
+                <label class="grid gap-1">
+                    <span class="text-sm font-medium">{{ field.label }}</span>
+                    {{ field|add_class:"w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" }}
+                    {% if field.help_text %}<span class="text-xs text-gray-500">{{ field.help_text }}</span>{% endif %}
+                    {% for error in field.errors %}<span class="text-xs text-red-600">{{ error }}</span>{% endfor %}
+                </label>
+                {% endfor %}
+                <p x-show="added" x-transition class="text-emerald-600">Classroom added</p>
+                <button type="submit" name="add_classroom" class="btn-primary">Add Classroom</button>
             </form>
             <div class="grid gap-4 md:grid-cols-2">
                 {% for c in classrooms %}
-                <div class="p-4 border rounded shadow transition hover:shadow-lg">
+                <div class="card">
                     <div class="font-semibold mb-2">{{ c.name }}</div>
                     <div class="text-sm mb-2">Code: <span>{{ c.code }}</span>
-                        <button type="button" onclick="navigator.clipboard.writeText('{{ c.code }}')" class="bg-gray-200 px-2 py-1 ml-2 rounded">Copy</button>
+                        <button type="button" onclick="navigator.clipboard.writeText('{{ c.code }}')" class="btn-ghost ml-2">Copy</button>
                         <form method="post" action="{% url 'teacher_portal:regenerate_classroom_code' c.id %}" class="inline">
                             {% csrf_token %}
-                            <button type="submit" class="bg-yellow-500 text-white px-2 py-1 ml-2 rounded">Regenerate</button>
+                            <button type="submit" class="btn-secondary ml-2">Regenerate</button>
                         </form>
                     </div>
                     <div class="text-sm mb-2">AI: {% if c.use_ai %}Yes{% else %}No{% endif %}</div>
                     <div class="flex flex-wrap gap-2 text-sm">
-                        <a href="{% url 'teacher_portal:classroom_students' c.id %}" class="bg-green-500 text-white px-2 py-1 rounded">Students</a>
-                        <a href="{% url 'teacher_portal:edit_classroom' c.id %}" class="bg-blue-500 text-white px-2 py-1 rounded">Edit</a>
+                        <a href="{% url 'teacher_portal:classroom_students' c.id %}" class="btn-primary">Students</a>
+                        <a href="{% url 'teacher_portal:edit_classroom' c.id %}" class="btn-secondary">Edit</a>
                         <form method="post" action="{% url 'teacher_portal:delete_classroom' c.id %}" class="inline">
                             {% csrf_token %}
-                            <button type="submit" class="bg-red-500 text-white px-2 py-1 rounded">Delete</button>
+                            <button type="submit" class="btn-ghost text-red-600">Delete</button>
                         </form>
                     </div>
                 </div>
                 {% empty %}
-                <p>No classrooms yet.</p>
+                <p>Keine Klassen vorhanden.</p>
                 {% endfor %}
             </div>
-        </div>
+        </section>
     </div>
 
-    <div x-show="tab==='export'" class="bg-white p-4 rounded shadow">
-        <h2 class="text-xl mb-2">Datenexport</h2>
+    <div x-show="tab==='export'" class="card">
+        <h2 class="text-lg md:text-xl font-semibold mb-3">Datenexport</h2>
         <p class="mb-2">CSV herunterladen:</p>
-        <button class="bg-blue-500 text-white px-4 py-2 rounded" onclick="document.getElementById('export-frame').src='/api/export/csv/';">Export CSV</button>
+        <button class="btn-secondary" onclick="document.getElementById('export-frame').src='/api/export/csv/';">Export CSV</button>
         <iframe id="export-frame" class="hidden"></iframe>
     </div>
 
-    <div x-show="tab==='analysis'" class="bg-white p-4 rounded shadow" x-init="fetch('/api/export/dashboard-data/').then(r=>r.json()).then(d=>{ new Chart($refs.group,{type:'bar',data:{labels:d.group_labels,datasets:[{label:'Goals',data:d.group_data}]}}); new Chart($refs.ki,{type:'pie',data:{labels:d.ki_labels,datasets:[{data:d.ki_data}]}}); })">
-        <h2 class="text-xl mb-4">Auswertung</h2>
+    <div x-show="tab==='analysis'" class="card" x-init="fetch('/api/export/dashboard-data/').then(r=>r.json()).then(d=>{ new Chart($refs.group,{type:'bar',data:{labels:d.group_labels,datasets:[{label:'Goals',data:d.group_data}]}}); new Chart($refs.ki,{type:'pie',data:{labels:d.ki_labels,datasets:[{data:d.ki_data}]}}); })">
+        <h2 class="text-lg md:text-xl font-semibold mb-4">Auswertung</h2>
         <canvas x-ref="group" class="mb-4"></canvas>
         <canvas x-ref="ki"></canvas>
     </div>

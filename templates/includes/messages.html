@@ -1,0 +1,14 @@
+<div x-data="{show:true}" x-show="show" x-transition class="fixed inset-x-0 top-4 z-50 flex justify-center">
+  {% for message in messages %}
+  <div class="mx-2 rounded-xl px-4 py-3 shadow-lg ring-1 ring-black/5 text-white"
+       :class="{'bg-emerald-600': '{{ message.tags }}'.includes('success'),
+                'bg-blue-600': '{{ message.tags }}'.includes('info'),
+                'bg-yellow-600': '{{ message.tags }}'.includes('warning'),
+                'bg-red-600': '{{ message.tags }}'.includes('error')}">
+    <div class="flex items-center gap-3">
+      <span class="font-medium">{{ message }}</span>
+      <button @click="show=false" class="btn-ghost text-white/90">Schließen</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>

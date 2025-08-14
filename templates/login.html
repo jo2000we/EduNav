@@ -1,16 +1,24 @@
 {% extends 'base.html' %}
 {% block title %}Login{% endblock %}
 {% block content %}
-<div class="max-w-sm mx-auto bg-white p-6 rounded shadow">
-    <h1 class="text-xl mb-4">Login</h1>
+<section class="card w-full max-w-sm mx-auto">
+    <h1 class="text-2xl md:text-3xl font-semibold tracking-tight mb-4">Login</h1>
     {% if error %}
-    <p x-data="{show:true}" x-show="show" x-transition x-init="setTimeout(()=>show=false,3000)" class="text-red-500 mb-2 animate-pulse">{{ error }}</p>
+    <p x-data="{show:true}" x-show="show" x-transition class="text-red-600 mb-2">{{ error }}</p>
     {% endif %}
-    <form method="post" class="space-y-2">
+    <form method="post" class="grid gap-4 md:gap-5">
         {% csrf_token %}
-        <input type="text" name="pseudonym" placeholder="Pseudonym" class="w-full border p-2" required />
-        <input type="text" name="class_code" placeholder="Klasse" class="w-full border p-2" />
-        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded transition hover:bg-blue-600">Einloggen</button>
+        <label class="grid gap-1">
+            <span class="text-sm font-medium">Pseudonym</span>
+            <input type="text" name="pseudonym" required class="w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+        </label>
+        <label class="grid gap-1">
+            <span class="text-sm font-medium">Klasse</span>
+            <input type="text" name="class_code" class="w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+        </label>
+        <div class="flex gap-3">
+            <button type="submit" class="btn-primary">Einloggen</button>
+        </div>
     </form>
-</div>
+</section>
 {% endblock %}

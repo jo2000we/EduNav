@@ -1,46 +1,40 @@
 {% extends 'base.html' %}
 {% block title %}Reflexion{% endblock %}
 {% block content %}
-<div x-data="reflectionForm()" class="space-y-2">
-    <form x-show="!submitted"
-          hx-post="/api/reflections/"
-          hx-swap="none"
-          @htmx:afterRequest="handleResponse"
-          class="space-y-2">
+<section x-data="reflectionForm()" class="grid gap-4 md:gap-6">
+    <form x-show="!submitted" hx-post="/api/reflections/" hx-swap="none" @htmx:afterRequest="handleResponse" class="card grid gap-4 md:gap-5">
         <input type="hidden" name="user_session" value="{{ user_session_id }}">
         <input type="hidden" name="goal" value="{{ goal_id }}">
-        <div class="space-y-1">
-            <p>Hast du dein Ziel erreicht?</p>
-            <label class="block"><input type="radio" name="result" value="yes"> Ja</label>
-            <label class="block"><input type="radio" name="result" value="partial"> Teilweise</label>
-            <label class="block"><input type="radio" name="result" value="no"> Nein</label>
+        <div class="grid gap-2">
+            <p class="text-sm font-medium">Hast du dein Ziel erreicht?</p>
+            <label class="inline-flex items-center gap-2"><input type="radio" name="result" value="yes"> <span>Ja</span></label>
+            <label class="inline-flex items-center gap-2"><input type="radio" name="result" value="partial"> <span>Teilweise</span></label>
+            <label class="inline-flex items-center gap-2"><input type="radio" name="result" value="no"> <span>Nein</span></label>
         </div>
-        <textarea name="obstacles" class="w-full border p-2" placeholder="Welche Hindernisse gab es?"></textarea>
-        <textarea name="next_step" class="w-full border p-2" placeholder="Was ist dein nächster Schritt?"></textarea>
+        <label class="grid gap-1">
+            <span class="text-sm font-medium">Welche Hindernisse gab es?</span>
+            <textarea name="obstacles" class="w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"></textarea>
+        </label>
+        <label class="grid gap-1">
+            <span class="text-sm font-medium">Was ist dein nächster Schritt?</span>
+            <textarea name="next_step" class="w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"></textarea>
+        </label>
         {% if can_use_ai %}
-        <button type="button"
-                class="bg-gray-500 text-white px-4 py-2 w-full sm:w-auto"
-                hx-post="/api/vg/next-step/suggest/"
-                hx-include="closest form"
-                hx-swap="none"
-                @htmx:afterRequest="handleSuggestions">KI-Vorschläge anzeigen</button>
-        <div class="space-y-1" x-show="suggestions.length">
+        <button type="button" class="btn-ghost w-full sm:w-auto" hx-post="/api/vg/next-step/suggest/" hx-include="closest form" hx-swap="none" @htmx:afterRequest="handleSuggestions">KI-Vorschläge anzeigen</button>
+        <div class="grid gap-2" x-show="suggestions.length">
             <template x-for="s in suggestions" :key="s">
-                <button type="button" class="border w-full text-left px-2 py-1"
-                        hx-post="/api/vg/next-step/suggest/"
-                        :hx-vals="{selected: s}"
-                        hx-include="closest form"
-                        hx-swap="none"
-                        @htmx:afterRequest="handleResponse"
-                        x-text="s"></button>
+                <button type="button" class="btn-ghost justify-start" hx-post="/api/vg/next-step/suggest/" :hx-vals="{selected: s}" hx-include="closest form" hx-swap="none" @htmx:afterRequest="handleResponse" x-text="s"></button>
             </template>
         </div>
         {% endif %}
-        <button class="bg-blue-500 text-white px-4 py-2 w-full sm:w-auto">Reflexion speichern</button>
+        <div class="flex gap-3">
+            <button class="btn-secondary w-full sm:w-auto" type="submit">Reflexion speichern</button>
+            <a href="{% url 'dashboard' %}" class="btn-ghost">Abbrechen</a>
+        </div>
     </form>
-    <div x-show="submitted" class="p-4 bg-green-100 rounded">Danke für deine Reflexion!</div>
-    <div x-show="error" class="p-4 bg-red-100 rounded" x-text="error"></div>
-</div>
+    <div x-show="submitted" class="card bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300">Danke für deine Reflexion!</div>
+    <div x-show="error" class="card bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300" x-text="error"></div>
+</section>
 <script>
 function reflectionForm(){
     return {

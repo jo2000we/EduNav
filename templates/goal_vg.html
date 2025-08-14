@@ -1,22 +1,19 @@
 {% extends 'base.html' %}
 {% block title %}Zielsetzung VG{% endblock %}
 {% block content %}
-<div x-data="goalCoach()" class="space-y-4">
-    <div id="chat" class="space-y-2 border p-2 rounded h-64 overflow-y-auto"></div>
-    <form :hx-post="goalId ? '/api/vg/coach/next/' : '/api/vg/goals/'"
-          hx-swap="none"
-          @htmx:afterRequest="handleResponse"
-          class="flex flex-col sm:flex-row gap-2">
+<div x-data="goalCoach()" class="grid gap-4 md:gap-6">
+    <div id="chat" class="card h-64 overflow-y-auto space-y-2"></div>
+    <form :hx-post="goalId ? '/api/vg/coach/next/' : '/api/vg/goals/'" hx-swap="none" @htmx:afterRequest="handleResponse" class="flex flex-col sm:flex-row gap-2">
         <input type="hidden" name="user_session" value="{{ user_session_id }}" x-show="!goalId">
         <input type="hidden" name="goal_id" :value="goalId" x-show="goalId">
-        <textarea x-model="message" class="flex-1 border p-2" placeholder="Deine Nachricht..."></textarea>
+        <textarea x-model="message" class="flex-1 rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="Deine Nachricht..."></textarea>
         <input type="hidden" name="raw_text" :value="message" x-show="!goalId">
         <input type="hidden" name="user_reply" :value="message" x-show="goalId">
-        <button class="bg-blue-500 text-white px-4 py-2 sm:self-start">Senden</button>
+        <button class="btn-secondary sm:self-start" type="submit">Senden</button>
     </form>
     <div class="flex flex-wrap gap-2 text-xs">
         <template x-for="(val, key) in smart" :key="key">
-            <span class="px-2 py-1 rounded" :class="val ? 'bg-green-200' : 'bg-gray-200'" x-text="key"></span>
+            <span class="badge" :class="val ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300' : ''" x-text="key"></span>
         </template>
     </div>
 </div>

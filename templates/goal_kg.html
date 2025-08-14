@@ -1,18 +1,24 @@
 {% extends 'base.html' %}
 {% block title %}Zielsetzung KG{% endblock %}
 {% block content %}
-<div x-data="goalKG()" class="space-y-4">
-    <form hx-post="/api/goals/" hx-swap="none" @htmx:afterRequest="updateSmart" class="space-y-2">
+<section x-data="goalKG()" class="grid gap-4 md:gap-6">
+    <form hx-post="/api/goals/" hx-swap="none" @htmx:afterRequest="updateSmart" class="card grid gap-4 md:gap-5">
         <input type="hidden" name="user_session" value="{{ user_session_id }}">
-        <textarea name="raw_text" class="w-full border p-2" placeholder="Was möchtest du erreichen?"></textarea>
-        <button class="bg-green-500 text-white px-4 py-2 w-full sm:w-auto">Ziel speichern</button>
+        <label class="grid gap-1">
+            <span class="text-sm font-medium">Was möchtest du erreichen?</span>
+            <textarea name="raw_text" class="w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"></textarea>
+        </label>
+        <div class="flex gap-3">
+            <button class="btn-primary w-full sm:w-auto" type="submit">Ziel speichern</button>
+            <a href="{% url 'dashboard' %}" class="btn-ghost">Abbrechen</a>
+        </div>
     </form>
     <div class="flex flex-wrap gap-2 text-xs">
         <template x-for="(val, key) in smart" :key="key">
-            <span class="px-2 py-1 rounded" :class="val ? 'bg-green-200' : 'bg-gray-200'" x-text="key"></span>
+            <span class="badge" :class="val ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300' : ''" x-text="key"></span>
         </template>
     </div>
-</div>
+</section>
 <script>
 function goalKG(){
     return {
