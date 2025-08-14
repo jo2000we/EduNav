@@ -14,7 +14,7 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.db.models import Count
 
-from goals.models import Goal, KIInteraction
+from goals.models import Goal, KIInteraction, OverallGoal
 from reflections.models import Reflection, Note
 
 
@@ -29,6 +29,18 @@ def build_dataset(from_date=None, to_date=None, klass=None, group=None):
     if group:
         qs = qs.filter(user_session__user__gruppe=group)
     goals = list(qs)
+    # prefetch latest overall goals per user
+    user_ids = {g.user_session.user_id for g in goals}
+    overall_goals = (
+        OverallGoal.objects.filter(user_id__in=user_ids)
+        .order_by("user_id", "-created_at")
+        .values("user_id", "text")
+    )
+    overall_map = {}
+    for og in overall_goals:
+        # keep first occurrence per user (newest due to ordering)
+        overall_map.setdefault(og["user_id"], og["text"])
+
     rows = []
     for goal in goals:
         user = goal.user_session.user
@@ -37,28 +49,31 @@ def build_dataset(from_date=None, to_date=None, klass=None, group=None):
         notes_count = Note.objects.filter(user_session=goal.user_session).count()
         ki_turns = KIInteraction.objects.filter(goal=goal).count()
         smart = goal.smart_score or {}
-        rows.append({
-            "user_id": user.id,
-            "pseudonym": user.pseudonym,
-            "klassengruppe": getattr(user.classroom, "name", None),
-            "gruppe": user.gruppe,
-            "lesson_date": lesson.date,
-            "lesson_topic": lesson.topic,
-            "goal_raw": goal.raw_text,
-            "goal_final": goal.final_text,
-            "smart_specific": smart.get("specific"),
-            "smart_measurable": smart.get("measurable"),
-            "smart_achievable": smart.get("achievable"),
-            "smart_relevant": smart.get("relevant"),
-            "smart_time_bound": smart.get("time_bound"),
-            "smart_score": smart.get("overall", smart.get("score")),
-            "ref_result": getattr(reflection, "result", None),
-            "ref_obstacles": getattr(reflection, "obstacles", None),
-            "ref_next_step": getattr(reflection, "next_step", None),
-            "ref_next_step_source": getattr(reflection, "next_step_source", None),
-            "notes_count": notes_count,
-            "ki_turns": ki_turns,
-        })
+        rows.append(
+            {
+                "user_id": user.id,
+                "pseudonym": user.pseudonym,
+                "klassengruppe": getattr(user.classroom, "name", None),
+                "gruppe": user.gruppe,
+                "lesson_date": lesson.date,
+                "lesson_topic": lesson.topic,
+                "goal_raw": goal.raw_text,
+                "goal_final": goal.final_text,
+                "overall_goal": overall_map.get(user.id),
+                "smart_specific": smart.get("specific"),
+                "smart_measurable": smart.get("measurable"),
+                "smart_achievable": smart.get("achievable"),
+                "smart_relevant": smart.get("relevant"),
+                "smart_time_bound": smart.get("time_bound"),
+                "smart_score": smart.get("overall", smart.get("score")),
+                "ref_result": getattr(reflection, "result", None),
+                "ref_obstacles": getattr(reflection, "obstacles", None),
+                "ref_next_step": getattr(reflection, "next_step", None),
+                "ref_next_step_source": getattr(reflection, "next_step_source", None),
+                "notes_count": notes_count,
+                "ki_turns": ki_turns,
+            }
+        )
     return rows, goals
 
 
@@ -138,7 +153,7 @@ class ExportXLSXView(View):
                 "created_at": u.created_at,
                 "exported_at": exported_at,
             }
-            for u in users
+        for u in users
         ]
 
         goal_rows = [
@@ -157,6 +172,17 @@ class ExportXLSXView(View):
 
         goal_ids = [g.id for g in goals]
         user_session_ids = [g.user_session_id for g in goals]
+
+        overall_goal_rows = [
+            {
+                "id": og.id,
+                "user": og.user_id,
+                "text": og.text,
+                "created_at": og.created_at,
+                "exported_at": exported_at,
+            }
+            for og in OverallGoal.objects.filter(user_id__in=user_ids)
+        ]
 
         reflection_rows = [
             {
@@ -214,6 +240,7 @@ class ExportXLSXView(View):
 
         write_sheet("Users", user_rows)
         write_sheet("Goals", goal_rows)
+        write_sheet("OverallGoals", overall_goal_rows)
         write_sheet("Reflections", reflection_rows)
         write_sheet("KIInteractions", ki_rows)
         write_sheet("Notes", note_rows)
