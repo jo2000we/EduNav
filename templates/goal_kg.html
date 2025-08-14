@@ -21,6 +21,7 @@ function goalKG(){
             let data={};
             try{ data = JSON.parse(e.detail.xhr.responseText);}catch(err){}
             if(data.smart_score){ this.smart = data.smart_score; }
+            if(e.detail.successful){ window.location.href='/dashboard/'; }
         }
     }
 }
