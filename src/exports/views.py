@@ -5,13 +5,14 @@ import json
 import uuid
 from datetime import datetime
 from io import StringIO, BytesIO
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.contrib.admin.views.decorators import staff_member_required
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.utils.dateparse import parse_date
 from django.utils import timezone
 from django.contrib.auth import get_user_model
+from django.db.models import Count
 
 from goals.models import Goal, KIInteraction
 from reflections.models import Reflection, Note
@@ -60,6 +61,35 @@ def build_dataset(from_date=None, to_date=None, klass=None, group=None):
         })
     return rows, goals
 
+
+@method_decorator(staff_member_required, name="dispatch")
+class DashboardDataView(View):
+    """Provide JSON stats for the admin dashboard charts."""
+
+    def get(self, request):
+        goals = Goal.objects.select_related("user_session__user")
+        group_counts = (
+            goals.values("user_session__user__gruppe")
+            .annotate(count=Count("id"))
+            .order_by()
+        )
+        labels = [gc["user_session__user__gruppe"] or "?" for gc in group_counts]
+        data = [gc["count"] for gc in group_counts]
+        ki_with = (
+            KIInteraction.objects.filter(goal_id__in=goals.values_list("id", flat=True))
+            .values("goal_id")
+            .distinct()
+            .count()
+        )
+        ki_total = goals.count()
+        return JsonResponse(
+            {
+                "group_labels": labels,
+                "group_data": data,
+                "ki_labels": ["with_ki", "without_ki"],
+                "ki_data": [ki_with, ki_total - ki_with],
+            }
+        )
 
 @method_decorator(staff_member_required, name="dispatch")
 class ExportCSVView(View):

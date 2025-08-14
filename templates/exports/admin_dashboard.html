@@ -1,0 +1,39 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<h1>Exports Dashboard</h1>
+
+<div style="max-width:600px">
+  <canvas id="group-chart"></canvas>
+</div>
+<div style="max-width:600px">
+  <canvas id="ki-chart"></canvas>
+</div>
+
+<p>
+  <a href="{% url 'exports:csv' %}">CSV Export</a> |
+  <a href="{% url 'exports:xlsx' %}">XLSX Export</a>
+</p>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+fetch("{% url 'exports:dashboard-data' %}")
+  .then(response => response.json())
+  .then(data => {
+    new Chart(document.getElementById('group-chart'), {
+      type: 'bar',
+      data: {
+        labels: data.group_labels,
+        datasets: [{label: 'Goals per group', data: data.group_data}]
+      }
+    });
+    new Chart(document.getElementById('ki-chart'), {
+      type: 'doughnut',
+      data: {
+        labels: data.ki_labels,
+        datasets: [{data: data.ki_data}]
+      }
+    });
+  });
+</script>
+{% endblock %}
