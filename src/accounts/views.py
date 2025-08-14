@@ -3,6 +3,7 @@ from __future__ import annotations
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
+from django.http import HttpResponseForbidden
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
@@ -106,6 +107,12 @@ def dashboard(request):
 def goal_vg_page(request):
     today = timezone.now().date()
     lesson, _ = LessonSession.objects.get_or_create(date=today, classroom=request.user.classroom)
+    if not (
+        request.user.gruppe == User.VG
+        and lesson.use_ai
+        and SiteSettings.get().allow_ai
+    ):
+        return HttpResponseForbidden()
     user_session, _ = UserSession.objects.get_or_create(user=request.user, lesson_session=lesson)
     return render(request, "goal_vg.html", {"user_session_id": user_session.id})
 
