@@ -24,7 +24,7 @@ def build_dataset(from_date=None, to_date=None, klass=None, group=None):
     if to_date:
         qs = qs.filter(user_session__lesson_session__date__lte=to_date)
     if klass:
-        qs = qs.filter(user_session__user__klassengruppe=klass)
+        qs = qs.filter(user_session__user__classroom__name=klass)
     if group:
         qs = qs.filter(user_session__user__gruppe=group)
     goals = list(qs)
@@ -39,7 +39,7 @@ def build_dataset(from_date=None, to_date=None, klass=None, group=None):
         rows.append({
             "user_id": user.id,
             "pseudonym": user.pseudonym,
-            "klassengruppe": user.klassengruppe,
+            "klassengruppe": getattr(user.classroom, "name", None),
             "gruppe": user.gruppe,
             "lesson_date": lesson.date,
             "lesson_topic": lesson.topic,
@@ -103,7 +103,7 @@ class ExportXLSXView(View):
             {
                 "id": u.id,
                 "pseudonym": u.pseudonym,
-                "klassengruppe": u.klassengruppe,
+                "klassengruppe": getattr(u.classroom, "name", None),
                 "gruppe": u.gruppe,
                 "created_at": u.created_at,
                 "exported_at": exported_at,

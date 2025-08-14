@@ -11,7 +11,7 @@ from rest_framework.permissions import AllowAny
 
 from .models import User
 from .serializers import LoginSerializer, UserSerializer
-from lessons.models import LessonSession, UserSession
+from lessons.models import LessonSession, UserSession, Classroom
 from goals.models import Goal
 
 
@@ -22,11 +22,23 @@ class LoginView(APIView):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         pseudonym = serializer.validated_data["pseudonym"].strip()
-        class_code = serializer.validated_data.get("class_code", "")
+        class_code = serializer.validated_data.get("class_code", "").strip()
+        classroom = None
+        if class_code:
+            try:
+                classroom = Classroom.objects.get(code=class_code)
+            except Classroom.DoesNotExist:
+                return Response(
+                    {"class_code": ["Classroom not found."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         user, created = User.objects.get_or_create(
             pseudonym=pseudonym,
-            defaults={"klassengruppe": class_code or "", "gruppe": User.KG},
+            defaults={"classroom": classroom, "gruppe": User.KG},
         )
+        if classroom and not created and user.classroom != classroom:
+            user.classroom = classroom
+            user.save()
         # Login user via session
         user.backend = "django.contrib.auth.backends.ModelBackend"
         login(request, user)
@@ -41,7 +53,7 @@ class MeView(APIView):
 @login_required
 def dashboard(request):
     today = timezone.now().date()
-    lesson, _ = LessonSession.objects.get_or_create(date=today)
+    lesson, _ = LessonSession.objects.get_or_create(date=today, classroom=request.user.classroom)
     user_session, _ = UserSession.objects.get_or_create(user=request.user, lesson_session=lesson)
     can_use_ai = request.user.gruppe == User.VG and lesson.use_ai
     return render(
@@ -54,7 +66,7 @@ def dashboard(request):
 @login_required
 def goal_vg_page(request):
     today = timezone.now().date()
-    lesson, _ = LessonSession.objects.get_or_create(date=today)
+    lesson, _ = LessonSession.objects.get_or_create(date=today, classroom=request.user.classroom)
     user_session, _ = UserSession.objects.get_or_create(user=request.user, lesson_session=lesson)
     return render(request, "goal_vg.html", {"user_session_id": user_session.id})
 
@@ -62,7 +74,7 @@ def goal_vg_page(request):
 @login_required
 def goal_kg_page(request):
     today = timezone.now().date()
-    lesson, _ = LessonSession.objects.get_or_create(date=today)
+    lesson, _ = LessonSession.objects.get_or_create(date=today, classroom=request.user.classroom)
     user_session, _ = UserSession.objects.get_or_create(user=request.user, lesson_session=lesson)
     return render(request, "goal_kg.html", {"user_session_id": user_session.id})
 
@@ -70,7 +82,7 @@ def goal_kg_page(request):
 @login_required
 def reflection_page(request):
     today = timezone.now().date()
-    lesson, _ = LessonSession.objects.get_or_create(date=today)
+    lesson, _ = LessonSession.objects.get_or_create(date=today, classroom=request.user.classroom)
     user_session, _ = UserSession.objects.get_or_create(user=request.user, lesson_session=lesson)
     goal = Goal.objects.filter(user_session=user_session).first()
     context = {
@@ -81,16 +93,27 @@ def reflection_page(request):
 
 
 def login_page(request):
+    error = ""
     if request.method == "POST":
         serializer = LoginSerializer(data=request.POST)
         if serializer.is_valid():
             pseudonym = serializer.validated_data["pseudonym"].strip()
-            class_code = serializer.validated_data.get("class_code", "")
-            user, _ = User.objects.get_or_create(
-                pseudonym=pseudonym,
-                defaults={"klassengruppe": class_code or "", "gruppe": User.KG},
-            )
-            user.backend = "django.contrib.auth.backends.ModelBackend"
-            login(request, user)
-            return redirect("dashboard")
-    return render(request, "login.html")
+            class_code = serializer.validated_data.get("class_code", "").strip()
+            classroom = None
+            if class_code:
+                try:
+                    classroom = Classroom.objects.get(code=class_code)
+                except Classroom.DoesNotExist:
+                    error = "Klasse existiert nicht."
+            if not error:
+                user, _ = User.objects.get_or_create(
+                    pseudonym=pseudonym,
+                    defaults={"classroom": classroom, "gruppe": User.KG},
+                )
+                if classroom and user.classroom != classroom:
+                    user.classroom = classroom
+                    user.save()
+                user.backend = "django.contrib.auth.backends.ModelBackend"
+                login(request, user)
+                return redirect("dashboard")
+    return render(request, "login.html", {"error": error})

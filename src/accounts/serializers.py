@@ -3,9 +3,11 @@ from .models import User
 
 
 class UserSerializer(serializers.ModelSerializer):
+    classroom = serializers.SlugRelatedField(slug_field="name", read_only=True)
+
     class Meta:
         model = User
-        fields = ["id", "pseudonym", "klassengruppe", "gruppe"]
+        fields = ["id", "pseudonym", "classroom", "gruppe"]
 
 
 class LoginSerializer(serializers.Serializer):

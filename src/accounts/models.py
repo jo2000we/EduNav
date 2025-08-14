@@ -38,7 +38,9 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     pseudonym = models.CharField(max_length=150, unique=True)
-    klassengruppe = models.CharField(max_length=20, blank=True)
+    classroom = models.ForeignKey(
+        "lessons.Classroom", null=True, blank=True, on_delete=models.SET_NULL
+    )
     gruppe = models.CharField(max_length=2, choices=GROUP_CHOICES, default=KG)
     created_at = models.DateTimeField(auto_now_add=True)
 
