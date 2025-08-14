@@ -1,11 +1,15 @@
 from rest_framework.permissions import BasePermission
 from lessons.models import UserSession
+from config.models import SiteSettings
 from .models import Goal
 
 class IsVGUser(BasePermission):
     def has_permission(self, request, view):
         user = request.user
         if not user.is_authenticated or getattr(user, "gruppe", "") != "VG":
+            return False
+
+        if not SiteSettings.get().allow_ai:
             return False
 
         lesson_session = None

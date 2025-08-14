@@ -14,6 +14,7 @@ from .serializers import LoginSerializer, UserSerializer
 from lessons.models import LessonSession, UserSession, Classroom
 from goals.models import Goal
 from reflections.models import Reflection
+from config.models import SiteSettings
 
 
 class LoginView(APIView):
@@ -59,7 +60,11 @@ def dashboard(request):
     today = timezone.now().date()
     lesson, _ = LessonSession.objects.get_or_create(date=today, classroom=request.user.classroom)
     user_session, _ = UserSession.objects.get_or_create(user=request.user, lesson_session=lesson)
-    can_use_ai = request.user.gruppe == User.VG and lesson.use_ai
+    can_use_ai = (
+        request.user.gruppe == User.VG
+        and lesson.use_ai
+        and SiteSettings.get().allow_ai
+    )
     goals = (
         Goal.objects
         .filter(user_session__user=request.user)
@@ -106,9 +111,15 @@ def reflection_page(request):
     lesson, _ = LessonSession.objects.get_or_create(date=today, classroom=request.user.classroom)
     user_session, _ = UserSession.objects.get_or_create(user=request.user, lesson_session=lesson)
     goal = Goal.objects.filter(user_session=user_session).first()
+    can_use_ai = (
+        request.user.gruppe == User.VG
+        and lesson.use_ai
+        and SiteSettings.get().allow_ai
+    )
     context = {
         "user_session_id": user_session.id,
         "goal_id": getattr(goal, "id", ""),
+        "can_use_ai": can_use_ai,
     }
     return render(request, "reflection.html", context)
 
