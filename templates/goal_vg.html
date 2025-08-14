@@ -4,6 +4,7 @@
 <div x-data="goalCoach()" class="grid gap-4 md:gap-6">
     <div id="chat" class="card h-64 overflow-y-auto space-y-2"></div>
     <form :hx-post="goalId ? '/api/vg/coach/next/' : '/api/vg/goals/'" hx-swap="none" @htmx:afterRequest="handleResponse" class="flex flex-col sm:flex-row gap-2">
+        {% csrf_token %}
         <input type="hidden" name="user_session" value="{{ user_session_id }}" x-show="!goalId">
         <input type="hidden" name="goal_id" :value="goalId" x-show="goalId">
         <textarea x-model="message" class="flex-1 rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="Deine Nachricht..."></textarea>

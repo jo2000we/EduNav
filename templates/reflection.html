@@ -3,6 +3,7 @@
 {% block content %}
 <section x-data="reflectionForm()" class="grid gap-4 md:gap-6">
     <form x-show="!submitted" hx-post="/api/reflections/" hx-swap="none" @htmx:afterRequest="handleResponse" class="card grid gap-4 md:gap-5">
+        {% csrf_token %}
         <input type="hidden" name="user_session" value="{{ user_session_id }}">
         <input type="hidden" name="goal" value="{{ goal_id }}">
         <div class="grid gap-2">
