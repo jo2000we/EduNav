@@ -36,6 +36,13 @@ class GoalCreateVGView(generics.CreateAPIView):
         goal.save()
         KIInteraction.objects.create(goal=goal, turn=1, role="user", content=goal.raw_text)
 
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        goal = Goal.objects.get(id=response.data["id"])
+        coach = AiCoach()
+        response.data["history"] = coach._history(goal)
+        return response
+
 
 class CoachNextView(APIView):
     permission_classes = [IsVGUser]
@@ -50,7 +57,7 @@ class CoachNextView(APIView):
         if user_reply:
             KIInteraction.objects.create(goal=goal, turn=turn, role="user", content=user_reply)
             turn += 1
-        conversation = "\n".join(i.content for i in goal.interactions.order_by("turn"))
+        conversation = coach._conversation(goal)
         result = evaluate_smart(conversation, topic)
         goal.smart_score = {k: result[k] for k in [
             "specific",
@@ -68,7 +75,14 @@ class CoachNextView(APIView):
             answer = result.get("question")
             status_flag = "question"
         KIInteraction.objects.create(goal=goal, turn=turn, role="assistant", content=answer)
-        return Response({"assistant_text": answer, "message_type": status_flag, "smart_status": goal.smart_score})
+        return Response(
+            {
+                "assistant_text": answer,
+                "message_type": status_flag,
+                "smart_status": goal.smart_score,
+                "history": coach._history(goal),
+            }
+        )
 
 
 class GoalFinalizeView(APIView):

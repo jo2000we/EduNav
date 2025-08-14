@@ -6,6 +6,18 @@ from django.conf import settings
 from lessons.models import UserSession
 
 
+class OverallGoal(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="overall_goals"
+    )
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):  # pragma: no cover - simple
+        return self.text[:20]
+
+
 class Goal(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user_session = models.ForeignKey(UserSession, on_delete=models.CASCADE)

@@ -1,5 +1,9 @@
 import json
-from goals.services import evaluate_smart, suggest_next_steps
+import pytest
+from goals.services import evaluate_smart, suggest_next_steps, AiCoach
+from goals.models import Goal, KIInteraction, OverallGoal
+from lessons.models import Classroom, LessonSession, UserSession
+from accounts.models import User
 
 
 class DummyClient:
@@ -72,3 +76,19 @@ def test_suggest_next_steps_parsing():
     assert len(suggestions) == 3
     assert suggestions[0].split()[-1] == "zwölf"
     assert all(len(s.split()) <= 12 for s in suggestions)
+
+
+@pytest.mark.django_db
+def test_conversation_includes_history_and_overall_goal():
+    classroom = Classroom.objects.create(name="10A", use_ai=True)
+    lesson = LessonSession.objects.create(date="2024-01-01", classroom=classroom)
+    user = User.objects.create_user(pseudonym="alice", gruppe=User.VG, classroom=classroom)
+    session = UserSession.objects.create(user=user, lesson_session=lesson)
+    past_goal = Goal.objects.create(user_session=session, raw_text="Alt", final_text="Älteres Ziel")
+    OverallGoal.objects.create(user=user, text="Langfristig Mathe")
+    goal = Goal.objects.create(user_session=session, raw_text="Neu")
+    KIInteraction.objects.create(goal=goal, turn=1, role="user", content="Neu")
+    coach = AiCoach()
+    convo = coach._conversation(goal)
+    assert "Langfristig Mathe" in convo
+    assert "Älteres Ziel" in convo
