@@ -1,5 +1,5 @@
 from django.contrib.admin.views.decorators import staff_member_required
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from config.models import SiteSettings
 from lessons.models import Classroom
@@ -35,3 +35,37 @@ def portal(request):
             "classrooms": classrooms,
         },
     )
+
+
+@staff_member_required
+def edit_classroom(request, pk):
+    classroom = get_object_or_404(Classroom, pk=pk)
+    if request.method == "POST":
+        form = ClassroomForm(request.POST, instance=classroom)
+        if form.is_valid():
+            form.save()
+            return redirect("teacher_portal:portal")
+    else:
+        form = ClassroomForm(instance=classroom)
+    return render(
+        request,
+        "teacher_portal/edit_classroom.html",
+        {"form": form, "classroom": classroom},
+    )
+
+
+@staff_member_required
+def delete_classroom(request, pk):
+    classroom = get_object_or_404(Classroom, pk=pk)
+    if request.method == "POST":
+        classroom.delete()
+    return redirect("teacher_portal:portal")
+
+
+@staff_member_required
+def regenerate_classroom_code(request, pk):
+    classroom = get_object_or_404(Classroom, pk=pk)
+    if request.method == "POST":
+        classroom.code = None
+        classroom.save()
+    return redirect("teacher_portal:portal")

@@ -21,12 +21,40 @@
         {{ classroom_form.as_p }}
         <button type="submit" name="add_classroom" class="bg-green-500 text-white px-4 py-2">Add Classroom</button>
     </form>
-    <ul>
-        {% for c in classrooms %}
-        <li>{{ c.name }}{% if c.use_ai %} (AI){% endif %}</li>
-        {% empty %}
-        <li>No classrooms yet.</li>
-        {% endfor %}
-    </ul>
+    <table class="min-w-full">
+        <thead>
+            <tr>
+                <th class="text-left">Name</th>
+                <th class="text-left">Code</th>
+                <th class="text-left">AI</th>
+                <th class="text-left">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in classrooms %}
+            <tr>
+                <td>{{ c.name }}</td>
+                <td>
+                    <span>{{ c.code }}</span>
+                    <button type="button" onclick="navigator.clipboard.writeText('{{ c.code }}')" class="bg-gray-200 px-2 py-1 ml-2">Copy</button>
+                    <form method="post" action="{% url 'teacher_portal:regenerate_classroom_code' c.id %}" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="bg-yellow-500 text-white px-2 py-1 ml-2">Regenerate</button>
+                    </form>
+                </td>
+                <td>{% if c.use_ai %}Yes{% else %}No{% endif %}</td>
+                <td>
+                    <a href="{% url 'teacher_portal:edit_classroom' c.id %}" class="bg-blue-500 text-white px-2 py-1 mr-2">Edit</a>
+                    <form method="post" action="{% url 'teacher_portal:delete_classroom' c.id %}" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="bg-red-500 text-white px-2 py-1">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4">No classrooms yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 {% endblock %}

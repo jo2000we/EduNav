@@ -11,6 +11,15 @@ class Classroom(models.Model):
     code = models.CharField(max_length=50, blank=True, null=True, unique=True)
     use_ai = models.BooleanField(default=False)
 
+    def save(self, *args, **kwargs):
+        if not self.code:
+            while True:
+                code = uuid.uuid4().hex[:6]
+                if not self.__class__.objects.filter(code=code).exists():
+                    self.code = code
+                    break
+        super().save(*args, **kwargs)
+
     def __str__(self) -> str:  # pragma: no cover - simple
         return self.name
 

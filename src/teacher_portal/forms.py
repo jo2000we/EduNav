@@ -16,4 +16,4 @@ class SiteSettingsForm(forms.ModelForm):
 class ClassroomForm(forms.ModelForm):
     class Meta:
         model = Classroom
-        fields = ["name", "code", "use_ai"]
+        fields = ["name", "use_ai"]
