@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from django.contrib.auth import login
+from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.http import HttpResponseForbidden
@@ -49,6 +49,12 @@ class LoginView(APIView):
         user.backend = "django.contrib.auth.backends.ModelBackend"
         login(request, user)
         return Response(UserSerializer(user).data)
+
+
+def logout_view(request):
+    """Log the user out and redirect to the login page."""
+    logout(request)
+    return redirect("login")
 
 
 class MeView(APIView):
