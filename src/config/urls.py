@@ -41,4 +41,5 @@ urlpatterns = [
     path("api/", include("goals.urls")),
     path("api/", include("reflections.urls")),
     path("api/", include("exports.urls")),
+    path("teacher/", include("teacher_portal.urls")),
 ]

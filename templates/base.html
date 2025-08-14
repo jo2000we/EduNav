@@ -13,6 +13,9 @@
     <header class="mb-4">
         <nav class="flex gap-4">
             <a href="{% url 'dashboard' %}">Dashboard</a>
+            {% if request.user.is_staff %}
+            <a href="{% url 'teacher_portal:portal' %}">Teacher Portal</a>
+            {% endif %}
             <a href="{% url 'logout' %}">Logout</a>
         </nav>
     </header>
