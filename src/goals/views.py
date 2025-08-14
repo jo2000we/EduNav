@@ -49,15 +49,28 @@ class GoalCreateVGView(generics.CreateAPIView):
     def perform_create(self, serializer):
         goal = serializer.save()
         topic = goal.user_session.lesson_session.topic
-        goal.smart_score = evaluate_smart(goal.raw_text, topic)
+        result = evaluate_smart(goal.raw_text, topic)
+        goal.smart_score = result
         goal.save()
         KIInteraction.objects.create(goal=goal, turn=1, role="user", content=goal.raw_text)
+        self._initial_question = result.get("question")
 
     def create(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
         goal = Goal.objects.get(id=response.data["id"])
         coach = AiCoach()
-        response.data["history"] = coach._history(goal)
+        turn = goal.interactions.count() + 1
+        assistant_text = getattr(self, "_initial_question", "")
+        KIInteraction.objects.create(
+            goal=goal, turn=turn, role="assistant", content=assistant_text
+        )
+        response.data = {
+            "id": goal.id,
+            "assistant_text": assistant_text,
+            "message_type": "question",
+            "smart_status": goal.smart_score,
+            "history": coach._history(goal),
+        }
         return response
 
 

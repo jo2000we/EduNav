@@ -26,11 +26,17 @@ class GroupPermissionTests(APITestCase):
 
     def test_vg_goal_creates_interaction(self):
         self.client.force_login(self.user_vg)
-        resp = self.client.post("/api/vg/goals/", {"user_session": str(self.session_vg.id), "raw_text": "Ich schreibe 3 Fragen"})
+        resp = self.client.post(
+            "/api/vg/goals/",
+            {"user_session": str(self.session_vg.id), "raw_text": "Ich schreibe 3 Fragen"},
+        )
         self.assertEqual(resp.status_code, 201)
-        goal_id = resp.data["id"]
-        goal = Goal.objects.get(id=goal_id)
-        self.assertEqual(goal.interactions.count(), 1)
+        goal = Goal.objects.get(id=resp.data["id"])
+        self.assertEqual(goal.interactions.count(), 2)
+        last = goal.interactions.last()
+        self.assertEqual(last.role, "assistant")
+        self.assertEqual(last.content, resp.data["assistant_text"])
+        self.assertEqual(resp.data["message_type"], "question")
 
     def test_vg_forbidden_when_ai_disabled(self):
         settings = SiteSettings.get()
@@ -79,7 +85,7 @@ class GoalFinalizeTests(APITestCase):
         self.assertEqual(resp.status_code, 200)
         self.goal.refresh_from_db()
         self.assertEqual(self.goal.final_text, "Finales Ziel")
-        self.assertEqual(self.goal.interactions.count(), 2)
+        self.assertEqual(self.goal.interactions.count(), 3)
         last = self.goal.interactions.last()
         self.assertEqual(last.role, "assistant")
         self.assertEqual(last.content, "Finales Ziel")
@@ -175,6 +181,47 @@ class CoachNextEvaluationTests(APITestCase):
         self.assertTrue(self.goal.smart_score["specific"])
         self.assertTrue(self.goal.smart_score["measurable"])
         self.assertEqual(self.goal.smart_score["overall"], 2)
+
+
+class CoachNextAutoFinalizeTests(APITestCase):
+    def setUp(self):
+        self.classroom = Classroom.objects.create(name="10A", use_ai=True)
+        self.lesson = LessonSession.objects.create(
+            date="2024-01-01", classroom=self.classroom
+        )
+        self.user = User.objects.create_user(
+            pseudonym="vg", gruppe=User.VG, classroom=self.classroom
+        )
+        self.session = UserSession.objects.create(
+            user=self.user, lesson_session=self.lesson
+        )
+        self.client.force_login(self.user)
+        self.goal = Goal.objects.create(user_session=self.session, raw_text="Ziel")
+        KIInteraction.objects.create(
+            goal=self.goal, turn=1, role="user", content="Ziel"
+        )
+
+    @patch("goals.views.evaluate_smart")
+    @patch("goals.views.AiCoach.finalize", return_value="Final")
+    def test_ready_to_finalize_returns_final_text(self, mock_final, mock_eval):
+        mock_eval.return_value = {
+            "specific": True,
+            "measurable": True,
+            "achievable": True,
+            "relevant": True,
+            "time_bound": True,
+            "overall": 5,
+            "question": "",
+        }
+        resp = self.client.post(
+            "/api/vg/coach/next/",
+            {"goal_id": str(self.goal.id), "user_reply": "Antwort"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["message_type"], "ready_to_finalize")
+        self.assertEqual(resp.data["assistant_text"], "Final")
+        self.goal.refresh_from_db()
+        self.assertEqual(self.goal.interactions.count(), 3)
 
 
 class ExportTests(APITestCase):
