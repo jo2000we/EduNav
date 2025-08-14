@@ -17,3 +17,10 @@ class Reflection(models.Model):
     next_step = models.TextField()
     next_step_source = models.CharField(max_length=10, default="user")
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["goal"], name="unique_reflection_per_goal"
+            )
+        ]
