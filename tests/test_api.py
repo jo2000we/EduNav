@@ -348,3 +348,88 @@ class LoginWorkflowTests(APITestCase):
             "/api/login/", {"pseudonym": "unknown"}, format="json"
         )
         self.assertEqual(resp.status_code, 400)
+
+
+class OwnershipAPITests(APITestCase):
+    def setUp(self):
+        self.classroom = Classroom.objects.create(name="10A", use_ai=True)
+        self.lesson = LessonSession.objects.create(
+            date="2024-01-01", classroom=self.classroom
+        )
+        self.user_vg1 = User.objects.create_user(
+            pseudonym="vg1", gruppe=User.VG, classroom=self.classroom
+        )
+        self.user_vg2 = User.objects.create_user(
+            pseudonym="vg2", gruppe=User.VG, classroom=self.classroom
+        )
+        self.session_vg1 = UserSession.objects.create(
+            user=self.user_vg1, lesson_session=self.lesson
+        )
+        self.session_vg2 = UserSession.objects.create(
+            user=self.user_vg2, lesson_session=self.lesson
+        )
+        self.client.force_login(self.user_vg2)
+        resp = self.client.post(
+            "/api/vg/goals/", {"user_session": str(self.session_vg2.id), "raw_text": "goal"}
+        )
+        self.goal_vg2 = Goal.objects.get(id=resp.data["id"])
+        self.client.logout()
+        self.user_kg1 = User.objects.create_user(
+            pseudonym="kg1", gruppe=User.KG, classroom=self.classroom
+        )
+        self.user_kg2 = User.objects.create_user(
+            pseudonym="kg2", gruppe=User.KG, classroom=self.classroom
+        )
+        self.session_kg1 = UserSession.objects.create(
+            user=self.user_kg1, lesson_session=self.lesson
+        )
+        self.session_kg2 = UserSession.objects.create(
+            user=self.user_kg2, lesson_session=self.lesson
+        )
+
+    def test_kg_goal_requires_own_session(self):
+        self.client.force_login(self.user_kg1)
+        resp = self.client.post(
+            "/api/goals/", {"user_session": str(self.session_kg2.id), "raw_text": "x"}
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_vg_goal_requires_own_session(self):
+        self.client.force_login(self.user_vg1)
+        resp = self.client.post(
+            "/api/vg/goals/", {"user_session": str(self.session_vg2.id), "raw_text": "x"}
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_vg_coach_next_denies_other_users_goal(self):
+        self.client.force_login(self.user_vg1)
+        resp = self.client.post(
+            "/api/vg/coach/next/", {"goal_id": str(self.goal_vg2.id)}
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_vg_finalize_denies_other_users_goal(self):
+        self.client.force_login(self.user_vg1)
+        resp = self.client.post(
+            "/api/vg/goals/finalize/", {"goal_id": str(self.goal_vg2.id)}
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_reflection_requires_own_session(self):
+        self.client.force_login(self.user_vg1)
+        data = {
+            "user_session": str(self.session_vg2.id),
+            "goal": str(self.goal_vg2.id),
+            "result": "yes",
+            "obstacles": "keine",
+            "next_step": "Weiter",
+        }
+        resp = self.client.post("/api/reflections/", data)
+        self.assertEqual(resp.status_code, 403)
+
+    def test_note_requires_own_session(self):
+        self.client.force_login(self.user_vg1)
+        resp = self.client.post(
+            "/api/notes/", {"user_session": str(self.session_vg2.id), "content": "h"}
+        )
+        self.assertEqual(resp.status_code, 403)

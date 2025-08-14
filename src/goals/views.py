@@ -3,6 +3,7 @@ from __future__ import annotations
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.exceptions import PermissionDenied
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 
@@ -34,6 +35,9 @@ class GoalCreateKGView(generics.CreateAPIView):
     serializer_class = GoalSerializer
 
     def perform_create(self, serializer):
+        user_session = serializer.validated_data["user_session"]
+        if user_session.user != self.request.user:
+            raise PermissionDenied()
         goal = serializer.save()
         goal.final_text = goal.raw_text
         goal.finalized_at = timezone.now()
@@ -47,6 +51,9 @@ class GoalCreateVGView(generics.CreateAPIView):
     permission_classes = [IsVGUser]
 
     def perform_create(self, serializer):
+        user_session = serializer.validated_data["user_session"]
+        if user_session.user != self.request.user:
+            raise PermissionDenied()
         goal = serializer.save()
         topic = goal.user_session.lesson_session.topic
         result = evaluate_smart(goal.raw_text, topic)
@@ -81,6 +88,8 @@ class CoachNextView(APIView):
         goal_id = request.data.get("goal_id")
         user_reply = request.data.get("user_reply")
         goal = get_object_or_404(Goal, id=goal_id)
+        if goal.user_session.user != request.user:
+            raise PermissionDenied()
         topic = goal.user_session.lesson_session.topic
         turn = goal.interactions.count() + 1
         coach = AiCoach()
@@ -124,6 +133,8 @@ class GoalFinalizeView(APIView):
     def post(self, request):
         goal_id = request.data.get("goal_id")
         goal = get_object_or_404(Goal, id=goal_id)
+        if goal.user_session.user != request.user:
+            raise PermissionDenied()
         coach = AiCoach()
         topic = goal.user_session.lesson_session.topic
         final_text = coach.finalize(goal, topic)

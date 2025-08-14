@@ -3,6 +3,7 @@ from __future__ import annotations
 from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404
 
 from .models import Reflection, Note
@@ -16,10 +17,26 @@ class ReflectionCreateView(generics.CreateAPIView):
     queryset = Reflection.objects.all()
     serializer_class = ReflectionSerializer
 
+    def perform_create(self, serializer):
+        user_session = serializer.validated_data["user_session"]
+        goal = serializer.validated_data["goal"]
+        if (
+            user_session.user != self.request.user
+            or goal.user_session.user != self.request.user
+        ):
+            raise PermissionDenied()
+        serializer.save()
+
 
 class NoteCreateView(generics.CreateAPIView):
     queryset = Note.objects.all()
     serializer_class = NoteSerializer
+
+    def perform_create(self, serializer):
+        user_session = serializer.validated_data["user_session"]
+        if user_session.user != self.request.user:
+            raise PermissionDenied()
+        serializer.save()
 
 
 class NextStepSuggestView(APIView):
