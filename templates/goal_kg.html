@@ -3,6 +3,7 @@
 {% block content %}
 <section x-data="goalKG()" class="grid gap-4 md:gap-6">
     <form hx-post="/api/goals/" hx-swap="none" @htmx:afterRequest="updateSmart" class="card grid gap-4 md:gap-5">
+        {% csrf_token %}
         <input type="hidden" name="user_session" value="{{ user_session_id }}">
         <label class="grid gap-1">
             <span class="text-sm font-medium">Was möchtest du erreichen?</span>

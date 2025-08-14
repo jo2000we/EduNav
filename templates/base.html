@@ -20,5 +20,10 @@
         {% block content %}{% endblock %}
     </main>
     {% include 'includes/footer.html' %}
+    <script>
+    document.body.addEventListener('htmx:configRequest', (e) => {
+        e.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
+    });
+    </script>
 </body>
 </html>
