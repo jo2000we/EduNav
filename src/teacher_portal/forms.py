@@ -4,6 +4,7 @@ import io
 import openai
 from openai import OpenAIError
 from django import forms
+from django.urls import reverse_lazy
 
 from accounts.models import User
 from config.models import SiteSettings
@@ -15,7 +16,14 @@ class SiteSettingsForm(forms.ModelForm):
         model = SiteSettings
         fields = ["openai_api_key", "allow_ai"]
         widgets = {
-            "openai_api_key": forms.PasswordInput(render_value=True),
+            "openai_api_key": forms.TextInput(
+                attrs={
+                    "hx-post": reverse_lazy("teacher_portal:check_openai_key"),
+                    "hx-trigger": "change",
+                    "hx-target": "closest div",
+                    "hx-swap": "none",
+                }
+            ),
         }
 
     def clean_openai_api_key(self):
