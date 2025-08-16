@@ -1,8 +1,11 @@
 from django import forms
 from django.test import SimpleTestCase
 from django.utils.safestring import SafeString
+import django
 
-from config.templatetags.form_tags import add_attrs
+django.setup()
+
+from config.templatetags.form_tags import add_attrs, add_class
 
 
 class AddAttrsFilterTests(SimpleTestCase):
@@ -19,3 +22,20 @@ class AddAttrsFilterTests(SimpleTestCase):
         self.assertIn('placeholder="Existing"', rendered)
         self.assertIn('hx-post="/post"', rendered)
         self.assertIn('hx-target="#id"', rendered)
+
+
+class CombinedFiltersTests(SimpleTestCase):
+    def test_add_attrs_then_add_class_preserves_htmx_and_class(self):
+        class SampleForm(forms.Form):
+            name = forms.CharField(widget=forms.TextInput(attrs={"placeholder": "Existing"}))
+
+        form = SampleForm()
+        field = form["name"]
+
+        add_attrs(field, {"hx-post": "/post", "hx-trigger": "keyup"})
+        rendered = add_class(field, "btn")
+
+        self.assertIn('placeholder="Existing"', rendered)
+        self.assertIn('hx-post="/post"', rendered)
+        self.assertIn('hx-trigger="keyup"', rendered)
+        self.assertIn('class="btn"', rendered)
