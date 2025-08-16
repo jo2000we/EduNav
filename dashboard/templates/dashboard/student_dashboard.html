@@ -1,5 +1,4 @@
 {% extends "dashboard/base.html" %}
-{% load json_script %}
 
 {% block content %}
 <h2 class="text-2xl font-bold mb-4">Hallo {{ student.pseudonym }}</h2>
@@ -19,14 +18,7 @@
   {% for entry in entries %}
   <div class="bg-white p-4 rounded shadow">
     <h4 class="font-semibold">{{ entry.session_date }}</h4>
-    {% if entry.goals %}
-    <p class="mt-2"><span class="font-semibold">Ziele:</span></p>
-    <ul class="list-disc list-inside">
-      {% for g in entry.goals %}
-      <li>{{ g }}</li>
-      {% endfor %}
-    </ul>
-    {% endif %}
+    <p class="mt-2"><span class="font-semibold">Ziel:</span> {{ entry.goal }}</p>
     {% if entry.priorities %}<p><span class="font-semibold">Prioritäten:</span> {{ entry.priorities }}</p>{% endif %}
     {% if entry.strategies %}<p><span class="font-semibold">Strategien:</span> {{ entry.strategies }}</p>{% endif %}
     {% if entry.resources %}<p><span class="font-semibold">Ressourcen:</span> {{ entry.resources }}</p>{% endif %}
@@ -36,19 +28,8 @@
     {% if entry.steps %}
       <hr class="my-2">
       <h5 class="font-semibold">Durchführung</h5>
-      <ul class="list-disc list-inside">
-        {% for s in entry.steps %}
-        <li>{{ s }}</li>
-        {% endfor %}
-      </ul>
-      {% if entry.time_usage %}
-        <p><span class="font-semibold">Zeitnutzung:</span></p>
-        <ul class="list-disc list-inside">
-          {% for t in entry.time_usage %}
-          <li>{{ t }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
+      <p>{{ entry.steps }}</p>
+      {% if entry.time_usage %}<p><span class="font-semibold">Zeitnutzung:</span> {{ entry.time_usage }}</p>{% endif %}
       {% if entry.strategy_check %}<p><span class="font-semibold">Strategiecheck:</span> {{ entry.strategy_check }}</p>{% endif %}
       {% if entry.problems %}<p><span class="font-semibold">Probleme:</span> {{ entry.problems }}</p>{% endif %}
       {% if entry.emotions %}<p><span class="font-semibold">Emotionen:</span> {{ entry.emotions }}</p>{% endif %}
@@ -56,96 +37,35 @@
       <button data-modal-target="executionModal-{{ entry.id }}" data-modal-toggle="executionModal-{{ entry.id }}" class="mt-2 bg-blue-500 text-white px-3 py-1 rounded">Durchführung eintragen</button>
     {% endif %}
 
-      {% if entry.goal_achievement %}
-        <hr class="my-2">
-        <h5 class="font-semibold">Reflexion</h5>
-        <p><span class="font-semibold">Zielerreichung:</span></p>
-        <ul class="list-disc list-inside">
-          {% for ga in entry.goal_achievement %}
-          <li>{{ ga }}</li>
-          {% endfor %}
-        </ul>
-        {% if entry.strategy_evaluation %}<p><span class="font-semibold">Strategie:</span> {{ entry.strategy_evaluation }}</p>{% endif %}
-        {% if entry.self_assessment %}<p><span class="font-semibold">Selbsteinschätzung:</span> {{ entry.self_assessment }}</p>{% endif %}
-        {% if entry.time_management_reflection %}<p><span class="font-semibold">Zeitmanagement:</span> {{ entry.time_management_reflection }}</p>{% endif %}
-        {% if entry.emotions_reflection %}<p><span class="font-semibold">Emotionen:</span> {{ entry.emotions_reflection }}</p>{% endif %}
-        {% if entry.outlook %}<p><span class="font-semibold">Ausblick:</span> {{ entry.outlook }}</p>{% endif %}
-      {% elif entry.steps %}
-        <button data-modal-target="reflectionModal-{{ entry.id }}" data-modal-toggle="reflectionModal-{{ entry.id }}" class="mt-2 bg-purple-500 text-white px-3 py-1 rounded">Reflexion eintragen</button>
-      {% endif %}
+    {% if entry.goal_achievement %}
+      <hr class="my-2">
+      <h5 class="font-semibold">Reflexion</h5>
+      <p><span class="font-semibold">Zielerreichung:</span> {{ entry.goal_achievement }}</p>
+      {% if entry.strategy_evaluation %}<p><span class="font-semibold">Strategie:</span> {{ entry.strategy_evaluation }}</p>{% endif %}
+      {% if entry.self_assessment %}<p><span class="font-semibold">Selbsteinschätzung:</span> {{ entry.self_assessment }}</p>{% endif %}
+      {% if entry.time_management_reflection %}<p><span class="font-semibold">Zeitmanagement:</span> {{ entry.time_management_reflection }}</p>{% endif %}
+      {% if entry.emotions_reflection %}<p><span class="font-semibold">Emotionen:</span> {{ entry.emotions_reflection }}</p>{% endif %}
+      {% if entry.outlook %}<p><span class="font-semibold">Ausblick:</span> {{ entry.outlook }}</p>{% endif %}
+    {% elif entry.steps %}
+      <button data-modal-target="reflectionModal-{{ entry.id }}" data-modal-toggle="reflectionModal-{{ entry.id }}" class="mt-2 bg-purple-500 text-white px-3 py-1 rounded">Reflexion eintragen</button>
+    {% endif %}
   </div>
 
   <!-- Execution Modal -->
   <div id="executionModal-{{ entry.id }}" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
-    <div class="relative p-4 w-full max-w-2xl max-h-full">
+    <div class="relative p-4 w-full max-w-lg max-h-full">
       <div class="relative bg-white rounded-lg shadow">
         <div class="p-4">
           <h3 class="text-lg font-semibold mb-4">Durchführung</h3>
-          <form method="post" action="{% url 'student_entry_execution' entry.id %}" id="execution-form-{{ entry.id }}">
+          <form method="post" action="{% url 'student_entry_execution' entry.id %}">
             {% csrf_token %}
-            <input type="hidden" name="steps" id="steps-{{ entry.id }}">
-            <input type="hidden" name="time_usage" id="time-usage-{{ entry.id }}">
-            <input type="hidden" name="strategy_check" id="strategy-check-{{ entry.id }}">
-
-            <div class="mb-4">
-              <label class="block mb-2">Was habe ich konkret gemacht?</label>
-              <div id="steps-list-{{ entry.id }}" class="space-y-2"></div>
-              <button type="button" id="add-unplanned-{{ entry.id }}" class="mt-2 bg-gray-200 px-2 py-1 rounded">ungeplante Beschäftigungen hinzufügen</button>
-              <p class="text-sm text-gray-500 mt-1">Hake an, womit du dich heute beschäftigt hast (nicht abgeschlossen).</p>
-            </div>
-
-            <div class="mb-4">
-              <label class="block mb-2">Wie viel Zeit habe ich tatsächlich gebraucht?</label>
-              <div id="time-usage-list-{{ entry.id }}" class="space-y-2"></div>
-            </div>
-
-            <div class="mb-4">
-              <label class="block mb-2">Welche Methoden habe ich eingesetzt? Waren diese zielführend?</label>
-              <table class="w-full text-left border" id="strategy-check-table-{{ entry.id }}">
-                <thead>
-                  <tr>
-                    <th class="border px-2 py-1">Vorgehen/Strategien</th>
-                    <th class="border px-2 py-1">Zielführend?</th>
-                    <th class="border px-2 py-1">Begründung</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-
-            <div class="mb-4">
-              <label class="block mb-2">Gab es Hindernisse? Habe ich meinen Plan angepasst – wenn ja, wie?</label>
-              <textarea name="problems" id="problems-{{ entry.id }}" class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5" rows="2"></textarea>
-            </div>
-
-            <div class="mb-4">
-              <label class="block mb-2">Wie habe ich mich gefühlt (z. B. motiviert, blockiert, zufrieden)? Was hat meine Konzentration unterstützt / gestört?</label>
-              <textarea name="emotions" id="emotions-{{ entry.id }}" required class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5" rows="2"></textarea>
-            </div>
-
+            {{ execution_form.as_p }}
             <button type="submit" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
           </form>
         </div>
       </div>
     </div>
   </div>
-
-  <!-- Unplanned Activity Modal -->
-  <div id="unplannedModal-{{ entry.id }}" class="hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-center w-full h-full bg-black bg-opacity-50">
-    <div class="bg-white p-4 rounded shadow w-full max-w-md">
-      <h3 class="text-lg font-semibold mb-4">Ein Ziel mit dem sich beschäftigt wurde, das jedoch nicht geplant war, hinzufügen</h3>
-      <input type="text" id="unplanned-input-{{ entry.id }}" class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5">
-      <div class="mt-4 text-right">
-        <button type="button" id="unplanned-save-{{ entry.id }}" class="bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
-      </div>
-    </div>
-  </div>
-
-  {% with gid='goals-data-'|add:entry.id tid='time-data-'|add:entry.id sid='strategies-data-'|add:entry.id %}
-    {{ entry.goals|json_script:gid }}
-    {{ entry.time_planning|json_script:tid }}
-    {{ entry.strategies|json_script:sid }}
-  {% endwith %}
 
   <!-- Reflection Modal -->
   <div id="reflectionModal-{{ entry.id }}" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
@@ -167,440 +87,18 @@
 
 <!-- Planning Modal -->
 <div id="planningModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
-  <div class="relative p-4 w-full max-w-2xl max-h-full">
+  <div class="relative p-4 w-full max-w-lg max-h-full">
     <div class="relative bg-white rounded-lg shadow">
       <div class="p-4">
-        <h3 class="text-lg font-semibold mb-4">Tagesplanung</h3>
-        <form method="post" action="{% url 'student_entry_create' %}" id="planning-form">
+        <h3 class="text-lg font-semibold mb-4">Neues Ziel planen</h3>
+        <form method="post" action="{% url 'student_entry_create' %}">
           {% csrf_token %}
-          {{ planning_form.goals }}
-          {{ planning_form.priorities }}
-          {{ planning_form.strategies }}
-          {{ planning_form.resources }}
-          {{ planning_form.time_planning }}
-          {{ planning_form.expectations }}
-
-          <div class="mb-4">
-            <label class="block mb-2">Ziele: Was will ich heute / diese Woche erreichen? (fachliche Ziele, Teilaufgaben, persönliche Lernziele)</label>
-            <div id="goals-list" class="flex flex-wrap gap-2"></div>
-            <button type="button" id="add-goal" class="mt-2 bg-gray-200 px-2 py-1 rounded">Ziel hinzufügen</button>
-          </div>
-
-          <div class="mb-4">
-            <label class="block mb-2">Prioritäten: Welche Aufgaben sind am wichtigsten?</label>
-            <div id="priority-list" class="flex flex-col gap-2"></div>
-            <p class="text-sm text-gray-500 mt-2">Klicke die besonders wichtigen Ziele an und ordne sie entsprechend in der Reihenfolge in der du sie bearbeiten willst an</p>
-          </div>
-
-          <div class="mb-4">
-            <label class="block mb-2">Vorgehen/Strategien: Wie will ich vorgehen? (z. B. Recherche, Entwürfe, Austausch, Versuch & Irrtum)</label>
-            <div id="strategy-list" class="flex flex-wrap gap-2"></div>
-            <button type="button" id="add-strategy" class="mt-2 bg-gray-200 px-2 py-1 rounded">Vorgehen/Strategien hinzufügen</button>
-          </div>
-
-          <div class="mb-4">
-            <label class="block mb-2">Ressourcen: Welche Materialien, Werkzeuge, Personen brauche ich?</label>
-            <div id="resource-list" class="flex flex-wrap gap-2"></div>
-            <button type="button" id="add-resource" class="mt-2 bg-gray-200 px-2 py-1 rounded">Ressource hinzufügen</button>
-          </div>
-
-          <div class="mb-4">
-            <label class="block mb-2">Zeitplanung: Wie lange möchte ich für welche Aufgabe arbeiten?</label>
-            <div id="time-planning-list" class="space-y-2"></div>
-          </div>
-
-  <div class="mb-4">
-    <label class="block mb-2">Erwartungen: Woran merke ich am Ende, dass ich erfolgreich war?</label>
-    <table class="w-full text-left border" id="expectations-table">
-      <thead>
-        <tr><th class="border px-2 py-1">Ziel</th><th class="border px-2 py-1">Indikatoren... Woran messe ich den Erfolg?</th></tr>
-      </thead>
-      <tbody id="expectations-body"></tbody>
-    </table>
-  </div>
-
+          {{ planning_form.as_p }}
           <button type="submit" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
         </form>
       </div>
     </div>
   </div>
 </div>
-
-<!-- Goal Modal -->
-<div id="goalModal" class="hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-center w-full h-full bg-black bg-opacity-50">
-  <div class="bg-white p-4 rounded shadow w-full max-w-md">
-    <h3 class="text-lg font-semibold mb-4">Ein Ziel festlegen</h3>
-    <input type="text" id="goal-input" class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5">
-    <div class="mt-4 text-right">
-      <button type="button" id="goal-save" class="bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
-    </div>
-  </div>
-</div>
-
-<!-- Strategy Modal -->
-<div id="strategyModal" class="hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-center w-full h-full bg-black bg-opacity-50">
-  <div class="bg-white p-4 rounded shadow w-full max-w-md">
-    <h3 class="text-lg font-semibold mb-4">Vorgehen/Strategie hinzufügen</h3>
-    <input type="text" id="strategy-input" class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5">
-    <div class="mt-4 text-right">
-      <button type="button" id="strategy-save" class="bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
-    </div>
-  </div>
-</div>
-
-<!-- Resource Modal -->
-<div id="resourceModal" class="hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-center w-full h-full bg-black bg-opacity-50">
-  <div class="bg-white p-4 rounded shadow w-full max-w-md">
-    <h3 class="text-lg font-semibold mb-4">Ressource hinzufügen</h3>
-    <input type="text" id="resource-input" class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5">
-    <div class="mt-4 text-right">
-      <button type="button" id="resource-save" class="bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
-    </div>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-<script>
-function setupExecutionModal(id) {
-  const goals = JSON.parse(document.getElementById('goals-data-' + id).textContent);
-  const timePlanning = JSON.parse(document.getElementById('time-data-' + id).textContent);
-  const strategies = JSON.parse(document.getElementById('strategies-data-' + id).textContent);
-
-  const stepsInput = document.getElementById('steps-' + id);
-  const timeInput = document.getElementById('time-usage-' + id);
-  const strategyInput = document.getElementById('strategy-check-' + id);
-  const stepsList = document.getElementById('steps-list-' + id);
-  const timeList = document.getElementById('time-usage-list-' + id);
-  const strategyBody = document.querySelector('#strategy-check-table-' + id + ' tbody');
-  const checked = [];
-  const unplanned = [];
-  const timeMap = {};
-  const strategyData = strategies.map(s => ({strategy: s, effective: false, reason: ''}));
-
-  function updateHidden() {
-    stepsInput.value = JSON.stringify(checked);
-    const tData = checked.map(g => ({goal: g, time: timeMap[g] || (timePlanning.find(p => p.goal === g)?.time || '00:00')}));
-    timeInput.value = JSON.stringify(tData);
-    strategyInput.value = JSON.stringify(strategyData);
-  }
-
-  function renderSteps() {
-    stepsList.innerHTML = '';
-    const all = goals.concat(unplanned);
-    all.forEach(g => {
-      const div = document.createElement('div');
-      div.className = 'flex items-center gap-2';
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.checked = checked.includes(g);
-      cb.addEventListener('change', () => {
-        if (cb.checked) {
-          checked.push(g);
-        } else {
-          const i = checked.indexOf(g);
-          if (i > -1) checked.splice(i, 1);
-        }
-        renderTime();
-        updateHidden();
-      });
-      const span = document.createElement('span');
-      span.textContent = g;
-      div.appendChild(cb);
-      div.appendChild(span);
-      stepsList.appendChild(div);
-    });
-  }
-
-  function renderTime() {
-    timeList.innerHTML = '';
-    const all = goals.concat(unplanned);
-    all.forEach(g => {
-      const wrap = document.createElement('div');
-      wrap.className = 'flex items-center gap-2';
-      const label = document.createElement('span');
-      label.className = 'flex-1';
-      label.textContent = g;
-      const input = document.createElement('input');
-      input.type = 'time';
-      input.className = 'border rounded p-1';
-      let val = timeMap[g] || (timePlanning.find(p => p.goal === g)?.time || '00:00');
-      if (!checked.includes(g)) {
-        input.value = '00:00';
-        input.disabled = true;
-        input.classList.add('bg-gray-200');
-      } else {
-        input.value = val;
-      }
-      input.addEventListener('change', e => { timeMap[g] = e.target.value; updateHidden(); });
-      wrap.appendChild(label);
-      wrap.appendChild(input);
-      timeList.appendChild(wrap);
-    });
-  }
-
-  function renderStrategies() {
-    strategyBody.innerHTML = '';
-    strategyData.forEach(item => {
-      const tr = document.createElement('tr');
-      const tdS = document.createElement('td');
-      tdS.className = 'border px-2 py-1';
-      tdS.textContent = item.strategy;
-      const tdC = document.createElement('td');
-      tdC.className = 'border px-2 py-1 text-center';
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.checked = item.effective;
-      cb.addEventListener('change', () => { item.effective = cb.checked; updateHidden(); });
-      tdC.appendChild(cb);
-      const tdR = document.createElement('td');
-      tdR.className = 'border px-2 py-1';
-      const inp = document.createElement('input');
-      inp.type = 'text';
-      inp.className = 'w-full border rounded p-1';
-      inp.value = item.reason;
-      inp.addEventListener('input', e => { item.reason = e.target.value; updateHidden(); });
-      tdR.appendChild(inp);
-      tr.appendChild(tdS);
-      tr.appendChild(tdC);
-      tr.appendChild(tdR);
-      strategyBody.appendChild(tr);
-    });
-  }
-
-  const addBtn = document.getElementById('add-unplanned-' + id);
-  const modal = document.getElementById('unplannedModal-' + id);
-  const modalInput = document.getElementById('unplanned-input-' + id);
-  const modalSave = document.getElementById('unplanned-save-' + id);
-
-  addBtn.addEventListener('click', () => { modal.classList.remove('hidden'); });
-  modalSave.addEventListener('click', () => {
-    const val = modalInput.value.trim();
-    if (val) {
-      unplanned.push(val);
-      checked.push(val);
-      modalInput.value = '';
-      modal.classList.add('hidden');
-      renderSteps();
-      renderTime();
-      updateHidden();
-    }
-  });
-
-  document.getElementById('execution-form-' + id).addEventListener('submit', () => {
-    updateHidden();
-  });
-
-  renderSteps();
-  renderTime();
-  renderStrategies();
-  updateHidden();
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-  const goals = [];
-  const priorities = [];
-  const strategies = [];
-  const resources = [];
-  const timePlanning = [];
-  const expectations = [];
-
-  const goalsList = document.getElementById('goals-list');
-  const priorityList = document.getElementById('priority-list');
-  const strategyList = document.getElementById('strategy-list');
-  const resourceList = document.getElementById('resource-list');
-  const timePlanningList = document.getElementById('time-planning-list');
-  const expectationsBody = document.getElementById('expectations-body');
-
-  function updateHidden() {
-    document.getElementById('id_goals').value = JSON.stringify(goals);
-    document.getElementById('id_priorities').value = JSON.stringify(priorities);
-    document.getElementById('id_strategies').value = JSON.stringify(strategies);
-    document.getElementById('id_resources').value = JSON.stringify(resources);
-    document.getElementById('id_time_planning').value = JSON.stringify(timePlanning);
-    document.getElementById('id_expectations').value = JSON.stringify(expectations);
-  }
-
-  function renderGoals() {
-    goalsList.innerHTML = '';
-    goals.forEach((goal, idx) => {
-      const tag = document.createElement('span');
-      tag.className = 'bg-blue-100 text-blue-800 px-2 py-1 rounded-full flex items-center';
-      tag.textContent = goal;
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'ml-2 text-red-500';
-      btn.textContent = '×';
-      btn.addEventListener('click', () => removeGoal(idx));
-      tag.appendChild(btn);
-      goalsList.appendChild(tag);
-    });
-    renderPriorities();
-    renderTimePlanning();
-    renderExpectations();
-    updateHidden();
-  }
-
-  function addGoal(goal) {
-    goals.push(goal);
-    priorities.push({goal: goal, priority: false});
-    timePlanning.push({goal: goal, time: '00:00'});
-    expectations.push({goal: goal, indicator: ''});
-    renderGoals();
-  }
-
-  function removeGoal(index) {
-    const goal = goals[index];
-    goals.splice(index,1);
-    const pIndex = priorities.findIndex(p => p.goal === goal);
-    if(pIndex>-1) priorities.splice(pIndex,1);
-    const tIndex = timePlanning.findIndex(p => p.goal === goal);
-    if(tIndex>-1) timePlanning.splice(tIndex,1);
-    const eIndex = expectations.findIndex(p => p.goal === goal);
-    if(eIndex>-1) expectations.splice(eIndex,1);
-    renderGoals();
-  }
-
-  function renderPriorities() {
-    priorityList.innerHTML='';
-    priorities.forEach((item, idx) => {
-      const div = document.createElement('div');
-      div.className = 'px-2 py-1 rounded border cursor-move ' + (item.priority ? 'bg-yellow-200' : 'bg-gray-100');
-      div.textContent = item.goal;
-      div.addEventListener('click', () => {
-        item.priority = !item.priority;
-        renderPriorities();
-      });
-      priorityList.appendChild(div);
-    });
-    if (Sortable && !priorityList._sortable) {
-      Sortable.create(priorityList, {
-        animation:150,
-        onEnd: function(evt){
-          const moved = priorities.splice(evt.oldIndex,1)[0];
-          priorities.splice(evt.newIndex,0,moved);
-          updateHidden();
-        }
-      });
-      priorityList._sortable = true;
-    }
-    updateHidden();
-  }
-
-  function renderTimePlanning() {
-    timePlanningList.innerHTML='';
-    timePlanning.forEach(item => {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'flex items-center gap-2';
-      const label = document.createElement('span');
-      label.className = 'flex-1';
-      label.textContent = item.goal;
-      const input = document.createElement('input');
-      input.type = 'time';
-      input.value = item.time;
-      input.className = 'border rounded p-1';
-      input.addEventListener('change', (e) => { item.time = e.target.value; updateHidden(); });
-      wrapper.appendChild(label);
-      wrapper.appendChild(input);
-      timePlanningList.appendChild(wrapper);
-    });
-    updateHidden();
-  }
-
-  function renderExpectations() {
-    expectationsBody.innerHTML='';
-    expectations.forEach(item => {
-      const tr = document.createElement('tr');
-      const tdGoal = document.createElement('td');
-      tdGoal.className = 'border px-2 py-1';
-      tdGoal.textContent = item.goal;
-      const tdInd = document.createElement('td');
-      tdInd.className = 'border px-2 py-1';
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'w-full border rounded p-1';
-      input.value = item.indicator;
-      input.addEventListener('input', (e)=>{ item.indicator = e.target.value; updateHidden(); });
-      tdInd.appendChild(input);
-      tr.appendChild(tdGoal);
-      tr.appendChild(tdInd);
-      expectationsBody.appendChild(tr);
-    });
-    updateHidden();
-  }
-
-  function renderStrategies() {
-    strategyList.innerHTML='';
-    strategies.forEach((s, idx)=>{
-      const tag=document.createElement('span');
-      tag.className='bg-blue-100 text-blue-800 px-2 py-1 rounded-full flex items-center';
-      tag.textContent=s;
-      const btn=document.createElement('button');
-      btn.type='button';
-      btn.className='ml-2 text-red-500';
-      btn.textContent='×';
-      btn.addEventListener('click',()=>{strategies.splice(idx,1); renderStrategies(); updateHidden();});
-      tag.appendChild(btn);
-      strategyList.appendChild(tag);
-    });
-    updateHidden();
-  }
-
-  function renderResources() {
-    resourceList.innerHTML='';
-    resources.forEach((s, idx)=>{
-      const tag=document.createElement('span');
-      tag.className='bg-blue-100 text-blue-800 px-2 py-1 rounded-full flex items-center';
-      tag.textContent=s;
-      const btn=document.createElement('button');
-      btn.type='button';
-      btn.className='ml-2 text-red-500';
-      btn.textContent='×';
-      btn.addEventListener('click',()=>{resources.splice(idx,1); renderResources(); updateHidden();});
-      tag.appendChild(btn);
-      resourceList.appendChild(tag);
-    });
-    updateHidden();
-  }
-
-  document.getElementById('add-goal').addEventListener('click', () => {
-    document.getElementById('goalModal').classList.remove('hidden');
-  });
-  document.getElementById('goal-save').addEventListener('click', () => {
-    const val = document.getElementById('goal-input').value.trim();
-    if(val){ addGoal(val); }
-    document.getElementById('goal-input').value='';
-    document.getElementById('goalModal').classList.add('hidden');
-  });
-
-  document.getElementById('add-strategy').addEventListener('click', () => {
-    document.getElementById('strategyModal').classList.remove('hidden');
-  });
-  document.getElementById('strategy-save').addEventListener('click', () => {
-    const val = document.getElementById('strategy-input').value.trim();
-    if(val){ strategies.push(val); renderStrategies(); }
-    document.getElementById('strategy-input').value='';
-    document.getElementById('strategyModal').classList.add('hidden');
-  });
-
-  document.getElementById('add-resource').addEventListener('click', () => {
-    document.getElementById('resourceModal').classList.remove('hidden');
-  });
-  document.getElementById('resource-save').addEventListener('click', () => {
-    const val = document.getElementById('resource-input').value.trim();
-    if(val){ resources.push(val); renderResources(); }
-    document.getElementById('resource-input').value='';
-    document.getElementById('resourceModal').classList.add('hidden');
-  });
-
-  document.getElementById('planning-form').addEventListener('submit', () => {
-    updateHidden();
-  });
-
-  {% for entry in entries %}
-  setupExecutionModal({{ entry.id }});
-  {% endfor %}
-
-});
-</script>
 
 {% endblock %}
