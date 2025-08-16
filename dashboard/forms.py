@@ -169,16 +169,17 @@ class ExecutionForm(forms.ModelForm):
                 "rows": 2,
             }
         ),
-        label="Gab es Hindernisse? Habe ich meinen Plan angepasst – wenn ja, wie?",
+        label="Gibt es Hindernisse? Passe ich meinen Plan an – wenn ja, wie?",
     )
     emotions = forms.CharField(
+        required=False,
         widget=forms.Textarea(
             attrs={
                 "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
                 "rows": 2,
             }
         ),
-        label="Wie habe ich mich gefühlt (z. B. motiviert, blockiert, zufrieden)? Was hat meine Konzentration unterstützt / gestört?",
+        label="Wie fühle ich mich (z. B. motiviert, blockiert, zufrieden)? Was unterstützt / stört meine Konzentration?",
     )
 
     class Meta:
@@ -199,11 +200,6 @@ class ExecutionForm(forms.ModelForm):
             usage = json.loads(data) if data else []
         except json.JSONDecodeError:
             usage = []
-        for item in usage:
-            if item.get("time") in ("", None, "00:00"):
-                raise forms.ValidationError(
-                    "Für jede Beschäftigung muss eine Zeit größer 00:00 angegeben werden."
-                )
         return usage
 
     def clean_strategy_check(self):
@@ -212,11 +208,6 @@ class ExecutionForm(forms.ModelForm):
             strategy = json.loads(data) if data else []
         except json.JSONDecodeError:
             strategy = []
-        for item in strategy:
-            if not item.get("reason"):
-                raise forms.ValidationError(
-                    "Für jede Strategie muss eine Begründung angegeben werden."
-                )
         return strategy
 
 
