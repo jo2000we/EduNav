@@ -21,6 +21,7 @@
                         {{ settings_form.allow_ai.label_tag }} {{ settings_form.allow_ai }}
                         {% if settings_form.allow_ai.errors %}<p class="text-red-500 text-sm">{{ settings_form.allow_ai.errors.0 }}</p>{% endif %}
                     </div>
+                    {% with openai_attrs|default:settings_form.openai_api_key.field.widget.attrs as openai_attrs %}
                     <div>
                         {{ settings_form.openai_api_key.label_tag }}
                         <div class="flex items-center gap-2">
@@ -32,6 +33,7 @@
                         </div>
                         {% if settings_form.openai_api_key.errors %}<p class="text-red-500 text-sm">{{ settings_form.openai_api_key.errors.0 }}</p>{% endif %}
                     </div>
+                    {% endwith %}
                 </div>
                 <p x-show="saved" x-transition class="text-emerald-600">Gespeichert</p>
                 <button type="submit" name="save_settings" class="btn-primary mt-2">Save</button>

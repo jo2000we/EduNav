@@ -1,9 +1,12 @@
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.template.loader import render_to_string
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 from accounts.models import User
 from lessons.models import Classroom
+from teacher_portal.forms import ClassroomForm, SiteSettingsForm
+from config.models import SiteSettings
 
 
 class TeacherPortalTests(TestCase):
@@ -51,3 +54,13 @@ class TeacherPortalTests(TestCase):
         url = reverse("teacher_portal:portal")
         resp = self.client.get(url)
         assert resp.status_code == 302
+
+    def test_template_renders_without_openai_attrs(self):
+        rf = RequestFactory()
+        request = rf.get("/")
+        context = {
+            "settings_form": SiteSettingsForm(instance=SiteSettings.get()),
+            "classroom_form": ClassroomForm(),
+            "classrooms": [],
+        }
+        render_to_string("teacher_portal/portal.html", context=context, request=request)
