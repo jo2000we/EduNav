@@ -21,7 +21,7 @@
                         {{ settings_form.allow_ai.label_tag }} {{ settings_form.allow_ai }}
                         {% if settings_form.allow_ai.errors %}<p class="text-red-500 text-sm">{{ settings_form.allow_ai.errors.0 }}</p>{% endif %}
                     </div>
-                    {% with openai_attrs|default:settings_form.openai_api_key.field.widget.attrs as openai_attrs %}
+                    {% with openai_attrs=openai_attrs|default:"" %}
                     <div>
                         {{ settings_form.openai_api_key.label_tag }}
                         <div class="flex items-center gap-2">

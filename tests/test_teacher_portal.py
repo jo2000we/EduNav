@@ -64,3 +64,11 @@ class TeacherPortalTests(TestCase):
             "classrooms": [],
         }
         render_to_string("teacher_portal/portal.html", context=context, request=request)
+
+    def test_saved_openai_key_is_rendered(self):
+        settings = SiteSettings.get()
+        settings.openai_api_key = "db-key"
+        settings.save()
+        url = reverse("teacher_portal:portal")
+        resp = self.client.get(url)
+        assert b"db-key" in resp.content
