@@ -212,126 +212,43 @@ class ExecutionForm(forms.ModelForm):
 
 
 class ReflectionForm(forms.ModelForm):
-    goal_achievement = forms.CharField(widget=forms.HiddenInput())
-    strategy_evaluation = forms.CharField(widget=forms.HiddenInput())
-    learned_subject = forms.CharField(
-        required=False,
-        widget=forms.Textarea(
-            attrs={
-                "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
-                "rows": 2,
-            }
-        ),
-        label="Was habe ich fachlich gelernt?",
-    )
-    learned_work = forms.CharField(
-        required=False,
-        widget=forms.Textarea(
-            attrs={
-                "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
-                "rows": 2,
-            }
-        ),
-        label="Was habe ich über meine Arbeitsweise gelernt?",
-    )
-    planning_realistic = forms.CharField(
-        required=False,
-        widget=forms.Textarea(
-            attrs={
-                "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
-                "rows": 2,
-            }
-        ),
-        label="War meine Planung realistisch?",
-    )
-    planning_deviations = forms.CharField(
-        required=False,
-        widget=forms.Textarea(
-            attrs={
-                "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
-                "rows": 2,
-            }
-        ),
-        label="Wo gab es Abweichungen?",
-    )
-    motivation_rating = forms.CharField(
-        required=False,
-        widget=forms.Textarea(
-            attrs={
-                "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
-                "rows": 2,
-            }
-        ),
-        label="Wie bewerte ich meine Motivation über die Zeit hinweg?",
-    )
-    motivation_improve = forms.CharField(
-        required=False,
-        widget=forms.Textarea(
-            attrs={
-                "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
-                "rows": 2,
-            }
-        ),
-        label="Was könnte ich tun, um sie zu stärken?",
-    )
-    next_phase = forms.CharField(
-        required=False,
-        widget=forms.Textarea(
-            attrs={
-                "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
-                "rows": 2,
-            }
-        ),
-        label="Was nehme ich mir für die nächste Phase konkret vor?",
-    )
-    strategy_outlook = forms.CharField(
-        required=False,
-        widget=forms.Textarea(
-            attrs={
-                "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
-                "rows": 2,
-            }
-        ),
-        label="Welche Strategien will ich beibehalten oder ändern?",
-    )
-
     class Meta:
         model = SRLEntry
         fields = [
             "goal_achievement",
             "strategy_evaluation",
-            "learned_subject",
-            "learned_work",
-            "planning_realistic",
-            "planning_deviations",
-            "motivation_rating",
-            "motivation_improve",
-            "next_phase",
-            "strategy_outlook",
+            "self_assessment",
+            "time_management_reflection",
+            "emotions_reflection",
+            "outlook",
         ]
+        widgets = {
+            field: forms.Textarea(
+                attrs={
+                    "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
+                    "rows": 2,
+                }
+            )
+            for field in [
+                "goal_achievement",
+                "strategy_evaluation",
+                "self_assessment",
+                "time_management_reflection",
+                "emotions_reflection",
+                "outlook",
+            ]
+        }
+        labels = {
+            "goal_achievement": "Habe ich meine Ziele erreicht? (vollständig / teilweise / nicht)",
+            "strategy_evaluation": "Welche Vorgehensweisen waren erfolgreich? Welche weniger hilfreich?",
+            "self_assessment": "Was habe ich fachlich gelernt? Was habe ich über meine Arbeitsweise gelernt?",
+            "time_management_reflection": "War meine Planung realistisch? Wo gab es Abweichungen?",
+            "emotions_reflection": "Wie bewerte ich meine Motivation über die Zeit hinweg? Was könnte ich tun, um sie zu stärken?",
+            "outlook": "Was nehme ich mir für die nächste Phase konkret vor? Welche Strategien will ich beibehalten oder ändern?",
+        }
 
     def clean_goal_achievement(self):
-        data = self.cleaned_data.get("goal_achievement", "[]")
-        try:
-            ga = json.loads(data) if data else []
-        except json.JSONDecodeError:
-            ga = []
-        for item in ga:
-            if not item.get("achievement") or not item.get("comment"):
-                raise forms.ValidationError(
-                    "Für jedes Ziel muss eine Einschätzung und ein Kommentar angegeben werden."
-                )
-        return ga
-
-    def clean_strategy_evaluation(self):
-        data = self.cleaned_data.get("strategy_evaluation", "[]")
-        try:
-            se = json.loads(data) if data else []
-        except json.JSONDecodeError:
-            se = []
-        for item in se:
-            if not item.get("helpful") or not item.get("reuse"):
-                raise forms.ValidationError(
-                    "Für jede Strategie muss angegeben werden, ob sie geholfen hat und ob sie erneut genutzt wird."
-                )
-        return se
+        data = self.cleaned_data.get("goal_achievement", "")
+        if data:
+            return [line.strip() for line in data.splitlines() if line.strip()]
+        return []
