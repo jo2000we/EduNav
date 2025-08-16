@@ -51,8 +51,13 @@
       {% if entry.strategy_check %}<p><span class="font-semibold">Strategiecheck:</span> {{ entry.strategy_check }}</p>{% endif %}
       {% if entry.problems %}<p><span class="font-semibold">Probleme:</span> {{ entry.problems }}</p>{% endif %}
       {% if entry.emotions %}<p><span class="font-semibold">Emotionen:</span> {{ entry.emotions }}</p>{% endif %}
-    {% else %}
-      <button data-modal-target="executionModal-{{ entry.id }}" data-modal-toggle="executionModal-{{ entry.id }}" onclick="setupExecutionModal({{ entry.id }})" class="mt-2 bg-blue-500 text-white px-3 py-1 rounded">Durchführung eintragen</button>
+    {% endif %}
+
+    {% if not entry.goal_achievement %}
+      <div class="mt-2 flex gap-2">
+        <button data-modal-target="executionModal-{{ entry.id }}" data-modal-toggle="executionModal-{{ entry.id }}" onclick="setupExecutionModal({{ entry.id }})" class="bg-blue-500 text-white px-3 py-1 rounded">Durchführung protokollieren</button>
+        <button onclick="finalizeExecution({{ entry.id }})" class="bg-red-500 text-white px-3 py-1 rounded">Durchführung abschließen und reflektieren</button>
+      </div>
     {% endif %}
 
       {% if entry.goal_achievement %}
@@ -69,8 +74,6 @@
         {% if entry.time_management_reflection %}<p><span class="font-semibold">Zeitmanagement:</span> {{ entry.time_management_reflection }}</p>{% endif %}
         {% if entry.emotions_reflection %}<p><span class="font-semibold">Emotionen:</span> {{ entry.emotions_reflection }}</p>{% endif %}
         {% if entry.outlook %}<p><span class="font-semibold">Ausblick:</span> {{ entry.outlook }}</p>{% endif %}
-      {% elif entry.steps %}
-        <button data-modal-target="reflectionModal-{{ entry.id }}" data-modal-toggle="reflectionModal-{{ entry.id }}" class="mt-2 bg-purple-500 text-white px-3 py-1 rounded">Reflexion eintragen</button>
       {% endif %}
   </div>
 
@@ -87,25 +90,26 @@
             <input type="hidden" name="strategy_check" id="strategy-check-{{ entry.id }}">
 
             <div class="mb-4">
-              <label class="block mb-2">Was habe ich konkret gemacht?</label>
+              <label class="block mb-2">Was mache ich konkret?</label>
               <div id="steps-list-{{ entry.id }}" class="space-y-2"></div>
               <button type="button" id="add-unplanned-{{ entry.id }}" class="mt-2 bg-gray-200 px-2 py-1 rounded">ungeplante Beschäftigungen hinzufügen</button>
-              <p class="text-sm text-gray-500 mt-1">Hake an, womit du dich heute beschäftigt hast (nicht abgeschlossen).</p>
+              <p class="text-sm text-gray-500 mt-1">Hake an, womit du dich gerade beschäftigst (nicht abgeschlossen).</p>
             </div>
 
             <div class="mb-4">
-              <label class="block mb-2">Wie viel Zeit habe ich tatsächlich gebraucht?</label>
+              <label class="block mb-2">Wie viel Zeit brauche ich tatsächlich?</label>
               <div id="time-usage-list-{{ entry.id }}" class="space-y-2"></div>
             </div>
 
             <div class="mb-4">
-              <label class="block mb-2">Welche Methoden habe ich eingesetzt? Waren diese zielführend?</label>
+              <label class="block mb-2">Welche Strategien setze ich tatsächlich ein? Sind diese Strategien auch in der Praxis sinnvoll? Muss ich meine Strategien anpassen?</label>
               <table class="w-full text-left border" id="strategy-check-table-{{ entry.id }}">
                 <thead>
                   <tr>
-                    <th class="border px-2 py-1">Vorgehen/Strategien</th>
-                    <th class="border px-2 py-1">Zielführend?</th>
-                    <th class="border px-2 py-1">Begründung</th>
+                    <th class="border px-2 py-1">Strategie</th>
+                    <th class="border px-2 py-1">nutze ich diese?</th>
+                    <th class="border px-2 py-1">Halte ich diese auch in der Praxis noch für sinnvoll?</th>
+                    <th class="border px-2 py-1">ggf. Änderungen/Anpassungen der Strategie an die Praxis</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -113,13 +117,13 @@
             </div>
 
             <div class="mb-4">
-              <label class="block mb-2">Gab es Hindernisse? Habe ich meinen Plan angepasst – wenn ja, wie?</label>
+              <label class="block mb-2">Gibt es Hindernisse? Passe ich meinen Plan an – wenn ja, wie?</label>
               <textarea name="problems" id="problems-{{ entry.id }}" class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5" rows="2"></textarea>
             </div>
 
             <div class="mb-4">
-              <label class="block mb-2">Wie habe ich mich gefühlt (z. B. motiviert, blockiert, zufrieden)? Was hat meine Konzentration unterstützt / gestört?</label>
-              <textarea name="emotions" id="emotions-{{ entry.id }}" required class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5" rows="2"></textarea>
+              <label class="block mb-2">Wie fühle ich mich (z. B. motiviert, blockiert, zufrieden)? Was unterstützt / stört meine Konzentration?</label>
+              <textarea name="emotions" id="emotions-{{ entry.id }}" class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5" rows="2"></textarea>
             </div>
 
             <button type="submit" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
@@ -141,10 +145,15 @@
   </div>
 
   {% with eid=entry.id|stringformat:'s' %}
-    {% with gid='goals-data-'|add:eid tid='time-data-'|add:eid sid='strategies-data-'|add:eid %}
+    {% with gid='goals-data-'|add:eid tid='time-data-'|add:eid sid='strategies-data-'|add:eid sd='steps-data-'|add:eid tu='time-usage-data-'|add:eid sc='strategy-check-data-'|add:eid pd='problems-data-'|add:eid ed='emotions-data-'|add:eid %}
       {{ entry.goals|json_script:gid }}
       {{ entry.time_planning|json_script:tid }}
       {{ entry.strategies|json_script:sid }}
+      {{ entry.steps|json_script:sd }}
+      {{ entry.time_usage|json_script:tu }}
+      {{ entry.strategy_check|json_script:sc }}
+      {{ entry.problems|json_script:pd }}
+      {{ entry.emotions|json_script:ed }}
     {% endwith %}
   {% endwith %}
 
@@ -262,28 +271,32 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
+function parseData(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return null;
+  try {
+    let data = JSON.parse(el.textContent);
+    if (typeof data === 'string') {
+      try { data = JSON.parse(data); } catch {}
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 function setupExecutionModal(id) {
   const form = document.getElementById('execution-form-' + id);
   if (form.dataset.initialized) return;
-  function parseData(elId) {
-    const el = document.getElementById(elId);
-    if (!el) return [];
-    try {
-      let data = JSON.parse(el.textContent);
-      if (typeof data === 'string') {
-        try {
-          data = JSON.parse(data);
-        } catch {}
-      }
-      return Array.isArray(data) ? data : [];
-    } catch (e) {
-      return [];
-    }
-  }
 
-  const goals = parseData('goals-data-' + id);
-  const timePlanning = parseData('time-data-' + id);
-  const strategies = parseData('strategies-data-' + id);
+  const goals = parseData('goals-data-' + id) || [];
+  const timePlanning = parseData('time-data-' + id) || [];
+  const strategies = parseData('strategies-data-' + id) || [];
+  const savedSteps = parseData('steps-data-' + id) || [];
+  const savedTimeUsage = parseData('time-usage-data-' + id) || [];
+  const savedStrategyCheck = parseData('strategy-check-data-' + id) || [];
+  const savedProblems = parseData('problems-data-' + id) || '';
+  const savedEmotions = parseData('emotions-data-' + id) || '';
 
   const stepsInput = document.getElementById('steps-' + id);
   const timeInput = document.getElementById('time-usage-' + id);
@@ -291,10 +304,17 @@ function setupExecutionModal(id) {
   const stepsList = document.getElementById('steps-list-' + id);
   const timeList = document.getElementById('time-usage-list-' + id);
   const strategyBody = document.querySelector('#strategy-check-table-' + id + ' tbody');
-  const checked = [];
-  const unplanned = [];
+  const problemsField = document.getElementById('problems-' + id);
+  const emotionsField = document.getElementById('emotions-' + id);
+
+  const checked = [...savedSteps];
+  const unplanned = savedSteps.filter(g => !goals.includes(g));
   const timeMap = {};
-  const strategyData = strategies.map(s => ({strategy: s, effective: false, reason: ''}));
+  savedTimeUsage.forEach(t => { timeMap[t.goal] = t.time; });
+  const strategyData = strategies.map(s => {
+    const found = savedStrategyCheck.find(sc => sc.strategy === s) || {};
+    return {strategy: s, used: !!found.used, useful: !!found.useful, adaptation: found.adaptation || ''};
+  });
 
   function updateHidden() {
     stepsInput.value = JSON.stringify(checked);
@@ -364,24 +384,36 @@ function setupExecutionModal(id) {
       const tdS = document.createElement('td');
       tdS.className = 'border px-2 py-1';
       tdS.textContent = item.strategy;
-      const tdC = document.createElement('td');
-      tdC.className = 'border px-2 py-1 text-center';
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.checked = item.effective;
-      cb.addEventListener('change', () => { item.effective = cb.checked; updateHidden(); });
-      tdC.appendChild(cb);
-      const tdR = document.createElement('td');
-      tdR.className = 'border px-2 py-1';
+
+      const tdU = document.createElement('td');
+      tdU.className = 'border px-2 py-1 text-center';
+      const cbU = document.createElement('input');
+      cbU.type = 'checkbox';
+      cbU.checked = item.used;
+      cbU.addEventListener('change', () => { item.used = cbU.checked; updateHidden(); });
+      tdU.appendChild(cbU);
+
+      const tdF = document.createElement('td');
+      tdF.className = 'border px-2 py-1 text-center';
+      const cbF = document.createElement('input');
+      cbF.type = 'checkbox';
+      cbF.checked = item.useful;
+      cbF.addEventListener('change', () => { item.useful = cbF.checked; updateHidden(); });
+      tdF.appendChild(cbF);
+
+      const tdA = document.createElement('td');
+      tdA.className = 'border px-2 py-1';
       const inp = document.createElement('input');
       inp.type = 'text';
       inp.className = 'w-full border rounded p-1';
-      inp.value = item.reason;
-      inp.addEventListener('input', e => { item.reason = e.target.value; updateHidden(); });
-      tdR.appendChild(inp);
+      inp.value = item.adaptation;
+      inp.addEventListener('input', e => { item.adaptation = e.target.value; updateHidden(); });
+      tdA.appendChild(inp);
+
       tr.appendChild(tdS);
-      tr.appendChild(tdC);
-      tr.appendChild(tdR);
+      tr.appendChild(tdU);
+      tr.appendChild(tdF);
+      tr.appendChild(tdA);
       strategyBody.appendChild(tr);
     });
   }
@@ -412,8 +444,30 @@ function setupExecutionModal(id) {
   renderSteps();
   renderTime();
   renderStrategies();
+  problemsField.value = savedProblems;
+  emotionsField.value = savedEmotions;
   updateHidden();
   form.dataset.initialized = '1';
+}
+
+function finalizeExecution(id) {
+  const steps = parseData('steps-data-' + id) || [];
+  const timeUsage = parseData('time-usage-data-' + id) || [];
+  const emotions = parseData('emotions-data-' + id) || '';
+  const missing = [];
+  steps.forEach(g => {
+    const t = timeUsage.find(tu => tu.goal === g)?.time || '00:00';
+    if (!t || t === '00:00') missing.push('Zeit für "' + g + '"');
+  });
+  if (!emotions || !emotions.trim()) missing.push('Gefühle/Konzentration');
+  if (missing.length) {
+    alert('Folgende Angaben fehlen noch:\n' + missing.join('\n'));
+  } else {
+    if (confirm('Wenn du fortfährst, kannst du die Durchführung nicht mehr ändern. Bist du sicher?')) {
+      const modal = document.getElementById('reflectionModal-' + id);
+      if (modal) modal.classList.remove('hidden');
+    }
+  }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
