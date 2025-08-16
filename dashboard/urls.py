@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import views, export_views, visualization_views
 
 urlpatterns = [
     path("", views.classroom_list, name="classroom_list"),
@@ -9,5 +9,15 @@ urlpatterns = [
         "classrooms/<int:classroom_id>/students/new/",
         views.student_create,
         name="student_create",
+    ),
+    path(
+        "classrooms/<int:classroom_id>/export/",
+        export_views.export_classroom_data,
+        name="classroom_export",
+    ),
+    path(
+        "classrooms/<int:classroom_id>/visualize/",
+        visualization_views.classroom_visualization,
+        name="classroom_visualization",
     ),
 ]

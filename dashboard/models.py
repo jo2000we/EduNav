@@ -13,6 +13,7 @@ class Classroom(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     openai_enabled = models.BooleanField(default=False)
+    api_key = models.CharField(max_length=100, blank=True, default="")
 
     class Meta:
         unique_together = ("teacher", "name")
