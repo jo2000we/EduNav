@@ -1,0 +1,104 @@
+{% extends "dashboard/base.html" %}
+
+{% block content %}
+<h2 class="text-2xl font-bold mb-4">Hallo {{ student.pseudonym }}</h2>
+
+<div class="mb-6 bg-white p-4 rounded shadow">
+  <h3 class="font-semibold mb-2">Gesamtziel</h3>
+  <form method="post" action="{% url 'student_overall_goal' %}">
+    {% csrf_token %}
+    {{ overall_goal_form.overall_goal }}
+    <button type="submit" class="mt-2 bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
+  </form>
+</div>
+
+<button data-modal-target="planningModal" data-modal-toggle="planningModal" class="mb-4 bg-green-500 text-white px-4 py-2 rounded">Neues Tagesziel</button>
+
+<div class="grid gap-4 md:grid-cols-2">
+  {% for entry in entries %}
+  <div class="bg-white p-4 rounded shadow">
+    <h4 class="font-semibold">{{ entry.session_date }}</h4>
+    <p class="mt-2"><span class="font-semibold">Ziel:</span> {{ entry.goal }}</p>
+    {% if entry.priorities %}<p><span class="font-semibold">Prioritäten:</span> {{ entry.priorities }}</p>{% endif %}
+    {% if entry.strategies %}<p><span class="font-semibold">Strategien:</span> {{ entry.strategies }}</p>{% endif %}
+    {% if entry.resources %}<p><span class="font-semibold">Ressourcen:</span> {{ entry.resources }}</p>{% endif %}
+    {% if entry.time_planning %}<p><span class="font-semibold">Zeitplanung:</span> {{ entry.time_planning }}</p>{% endif %}
+    {% if entry.expectations %}<p><span class="font-semibold">Erwartungen:</span> {{ entry.expectations }}</p>{% endif %}
+
+    {% if entry.steps %}
+      <hr class="my-2">
+      <h5 class="font-semibold">Durchführung</h5>
+      <p>{{ entry.steps }}</p>
+      {% if entry.time_usage %}<p><span class="font-semibold">Zeitnutzung:</span> {{ entry.time_usage }}</p>{% endif %}
+      {% if entry.strategy_check %}<p><span class="font-semibold">Strategiecheck:</span> {{ entry.strategy_check }}</p>{% endif %}
+      {% if entry.problems %}<p><span class="font-semibold">Probleme:</span> {{ entry.problems }}</p>{% endif %}
+      {% if entry.emotions %}<p><span class="font-semibold">Emotionen:</span> {{ entry.emotions }}</p>{% endif %}
+    {% else %}
+      <button data-modal-target="executionModal-{{ entry.id }}" data-modal-toggle="executionModal-{{ entry.id }}" class="mt-2 bg-blue-500 text-white px-3 py-1 rounded">Durchführung eintragen</button>
+    {% endif %}
+
+    {% if entry.goal_achievement %}
+      <hr class="my-2">
+      <h5 class="font-semibold">Reflexion</h5>
+      <p><span class="font-semibold">Zielerreichung:</span> {{ entry.goal_achievement }}</p>
+      {% if entry.strategy_evaluation %}<p><span class="font-semibold">Strategie:</span> {{ entry.strategy_evaluation }}</p>{% endif %}
+      {% if entry.self_assessment %}<p><span class="font-semibold">Selbsteinschätzung:</span> {{ entry.self_assessment }}</p>{% endif %}
+      {% if entry.time_management_reflection %}<p><span class="font-semibold">Zeitmanagement:</span> {{ entry.time_management_reflection }}</p>{% endif %}
+      {% if entry.emotions_reflection %}<p><span class="font-semibold">Emotionen:</span> {{ entry.emotions_reflection }}</p>{% endif %}
+      {% if entry.outlook %}<p><span class="font-semibold">Ausblick:</span> {{ entry.outlook }}</p>{% endif %}
+    {% elif entry.steps %}
+      <button data-modal-target="reflectionModal-{{ entry.id }}" data-modal-toggle="reflectionModal-{{ entry.id }}" class="mt-2 bg-purple-500 text-white px-3 py-1 rounded">Reflexion eintragen</button>
+    {% endif %}
+  </div>
+
+  <!-- Execution Modal -->
+  <div id="executionModal-{{ entry.id }}" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+    <div class="relative p-4 w-full max-w-lg max-h-full">
+      <div class="relative bg-white rounded-lg shadow">
+        <div class="p-4">
+          <h3 class="text-lg font-semibold mb-4">Durchführung</h3>
+          <form method="post" action="{% url 'student_entry_execution' entry.id %}">
+            {% csrf_token %}
+            {{ execution_form.as_p }}
+            <button type="submit" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reflection Modal -->
+  <div id="reflectionModal-{{ entry.id }}" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+    <div class="relative p-4 w-full max-w-lg max-h-full">
+      <div class="relative bg-white rounded-lg shadow">
+        <div class="p-4">
+          <h3 class="text-lg font-semibold mb-4">Reflexion</h3>
+          <form method="post" action="{% url 'student_entry_reflection' entry.id %}">
+            {% csrf_token %}
+            {{ reflection_form.as_p }}
+            <button type="submit" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Planning Modal -->
+<div id="planningModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+  <div class="relative p-4 w-full max-w-lg max-h-full">
+    <div class="relative bg-white rounded-lg shadow">
+      <div class="p-4">
+        <h3 class="text-lg font-semibold mb-4">Neues Ziel planen</h3>
+        <form method="post" action="{% url 'student_entry_create' %}">
+          {% csrf_token %}
+          {{ planning_form.as_p }}
+          <button type="submit" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
