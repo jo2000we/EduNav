@@ -1,5 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
+from django.http import HttpResponse
+from django.urls import reverse
 from .models import Classroom, Student
 from .forms import ClassroomForm, StudentForm
 
@@ -18,6 +20,10 @@ def classroom_create(request):
             classroom = form.save(commit=False)
             classroom.teacher = request.user
             classroom.save()
+            if request.headers.get("HX-Request"):
+                response = HttpResponse()
+                response["HX-Redirect"] = reverse("classroom_list")
+                return response
             return redirect("classroom_list")
     else:
         form = ClassroomForm()

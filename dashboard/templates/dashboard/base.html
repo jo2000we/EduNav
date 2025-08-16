@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>EduNav</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/flowbite@2.4.1/dist/flowbite.min.css" rel="stylesheet" />
 </head>
 <body class="bg-gray-100">
     <nav class="bg-white shadow p-4 flex justify-between">
@@ -13,5 +14,7 @@
     <main class="container mx-auto p-6">
         {% block content %}{% endblock %}
     </main>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flowbite@2.4.1/dist/flowbite.min.js"></script>
 </body>
 </html>
