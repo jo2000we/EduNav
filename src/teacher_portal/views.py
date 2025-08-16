@@ -37,7 +37,7 @@ def portal(request):
     check_openai_key_url = reverse("teacher_portal:check_openai_key")
     openai_attrs = {
         "hx-post": check_openai_key_url,
-        "hx-trigger": "keyup changed delay:500ms",
+        "hx-trigger": "keyup change delay:500ms",
         "hx-target": "closest div",
         "hx-swap": "none",
         "value": settings_form["openai_api_key"].value() or "",
