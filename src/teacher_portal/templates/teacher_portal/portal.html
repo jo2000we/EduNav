@@ -25,9 +25,7 @@
                     <div>
                         {{ settings_form.openai_api_key.label_tag }}
                         <div class="flex items-center gap-2">
-                            {{ settings_form.openai_api_key
-   |add_attrs:openai_attrs
-   |add_class:"w-full rounded-xl border-gray-300 dark:border-gray-700" }}
+                            {{ settings_form.openai_api_key|add_attrs:openai_attrs|add_class:"w-full rounded-xl border-gray-300 dark:border-gray-700" }}
 
                             <span x-show="ok !== null" class="inline-block w-5 h-5 rounded-full" :class="ok ? 'bg-emerald-600' : 'bg-red-600'"></span>
                         </div>

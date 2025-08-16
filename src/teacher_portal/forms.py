@@ -12,6 +12,7 @@ from lessons.models import Classroom
 
 
 class SiteSettingsForm(forms.ModelForm):
+    allow_ai = forms.BooleanField(required=False)
     class Meta:
         model = SiteSettings
         fields = ["openai_api_key", "allow_ai"]

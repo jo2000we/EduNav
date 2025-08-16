@@ -1,6 +1,5 @@
 from django import forms
 from django.test import SimpleTestCase
-from django.utils.safestring import SafeString
 import django
 
 django.setup()
@@ -16,9 +15,9 @@ class AddAttrsFilterTests(SimpleTestCase):
         form = SampleForm()
         field = form["name"]
 
-        rendered = add_attrs(field, {"hx-post": "/post", "hx-target": "#id"})
+        result = add_attrs(field, {"hx-post": "/post", "hx-target": "#id"})
+        rendered = result.as_widget()
 
-        self.assertIsInstance(rendered, SafeString)
         self.assertIn('placeholder="Existing"', rendered)
         self.assertIn('hx-post="/post"', rendered)
         self.assertIn('hx-target="#id"', rendered)
@@ -32,8 +31,10 @@ class CombinedFiltersTests(SimpleTestCase):
         form = SampleForm()
         field = form["name"]
 
-        add_attrs(field, {"hx-post": "/post", "hx-trigger": "keyup"})
-        rendered = add_class(field, "btn")
+        rendered = add_class(
+            add_attrs(field, {"hx-post": "/post", "hx-trigger": "keyup"}),
+            "btn",
+        )
 
         self.assertIn('placeholder="Existing"', rendered)
         self.assertIn('hx-post="/post"', rendered)
