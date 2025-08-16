@@ -71,7 +71,6 @@ class PlanningForm(forms.ModelForm):
         model = SRLEntry
         fields = [
             "session_date",
-            "goal",
             "priorities",
             "strategies",
             "resources",
@@ -83,12 +82,6 @@ class PlanningForm(forms.ModelForm):
                 attrs={
                     "type": "date",
                     "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
-                }
-            ),
-            "goal": forms.Textarea(
-                attrs={
-                    "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
-                    "rows": 3,
                 }
             ),
             "priorities": forms.Textarea(
@@ -122,6 +115,26 @@ class PlanningForm(forms.ModelForm):
                 }
             ),
         }
+        labels = {
+            "session_date": "Datum",
+            "priorities": "Prioritäten: Welche Aufgaben sind am wichtigsten?",
+            "strategies": "Vorgehen/Strategien: Wie will ich vorgehen? (z. B. Recherche, Entwürfe, Austausch, Versuch & Irrtum)",
+            "resources": "Ressourcen: Welche Materialien, Werkzeuge, Personen brauche ich?",
+            "time_planning": "Zeitplanung: Wie lange möchte ich für welche Aufgabe arbeiten?",
+            "expectations": "Erwartungen: Woran merke ich am Ende, dass ich erfolgreich war?",
+        }
+
+    def clean_priorities(self):
+        data = self.cleaned_data.get("priorities", "")
+        if data:
+            return [line.strip() for line in data.splitlines() if line.strip()]
+        return []
+
+    def clean_time_planning(self):
+        data = self.cleaned_data.get("time_planning", "")
+        if data:
+            return [line.strip() for line in data.splitlines() if line.strip()]
+        return []
 
 
 class ExecutionForm(forms.ModelForm):
@@ -137,6 +150,25 @@ class ExecutionForm(forms.ModelForm):
             )
             for field in ["steps", "time_usage", "strategy_check", "problems", "emotions"]
         }
+        labels = {
+            "steps": "Was habe ich konkret gemacht?",
+            "time_usage": "Wie viel Zeit habe ich tatsächlich gebraucht?",
+            "strategy_check": "Welche Methoden habe ich eingesetzt? Waren diese zielführend?",
+            "problems": "Gab es Hindernisse? Habe ich meinen Plan angepasst – wenn ja, wie?",
+            "emotions": "Wie habe ich mich gefühlt (z. B. motiviert, blockiert, zufrieden)? Was hat meine Konzentration unterstützt / gestört?",
+        }
+
+    def clean_steps(self):
+        data = self.cleaned_data.get("steps", "")
+        if data:
+            return [line.strip() for line in data.splitlines() if line.strip()]
+        return []
+
+    def clean_time_usage(self):
+        data = self.cleaned_data.get("time_usage", "")
+        if data:
+            return [line.strip() for line in data.splitlines() if line.strip()]
+        return []
 
 
 class ReflectionForm(forms.ModelForm):
@@ -166,3 +198,17 @@ class ReflectionForm(forms.ModelForm):
                 "outlook",
             ]
         }
+        labels = {
+            "goal_achievement": "Habe ich meine Ziele erreicht? (vollständig / teilweise / nicht)",
+            "strategy_evaluation": "Welche Vorgehensweisen waren erfolgreich? Welche weniger hilfreich?",
+            "self_assessment": "Was habe ich fachlich gelernt? Was habe ich über meine Arbeitsweise gelernt?",
+            "time_management_reflection": "War meine Planung realistisch? Wo gab es Abweichungen?",
+            "emotions_reflection": "Wie bewerte ich meine Motivation über die Zeit hinweg? Was könnte ich tun, um sie zu stärken?",
+            "outlook": "Was nehme ich mir für die nächste Phase konkret vor? Welche Strategien will ich beibehalten oder ändern?",
+        }
+
+    def clean_goal_achievement(self):
+        data = self.cleaned_data.get("goal_achievement", "")
+        if data:
+            return [line.strip() for line in data.splitlines() if line.strip()]
+        return []
