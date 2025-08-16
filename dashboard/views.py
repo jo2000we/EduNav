@@ -32,6 +32,8 @@ def classroom_create(request):
 
 @login_required
 def student_list(request, classroom_id):
+    if not request.headers.get("HX-Request"):
+        return redirect("classroom_list")
     classroom = get_object_or_404(Classroom, id=classroom_id, teacher=request.user)
     students = classroom.students.all()
     form = StudentForm()
