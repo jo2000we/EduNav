@@ -40,6 +40,7 @@ def portal(request):
         "hx-trigger": "keyup changed delay:500ms",
         "hx-target": "closest div",
         "hx-swap": "none",
+        "value": settings_form["openai_api_key"].value() or "",
     }
     return render(
         request,
