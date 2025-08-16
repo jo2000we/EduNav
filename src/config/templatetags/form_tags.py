@@ -1,13 +1,11 @@
 from django import template
+from django.utils.safestring import mark_safe
 
 register = template.Library()
 
 @register.filter(name="add_attrs")
 def add_attrs(field, attrs):
-    merged_attrs = field.field.widget.attrs.copy()
-    merged_attrs.update(attrs)
-    field.field.widget.attrs = merged_attrs
-    return field
+    return mark_safe(field.as_widget(attrs={**field.field.widget.attrs, **attrs}))
 
 @register.filter(name="add_class")
 def add_class(field, css):
