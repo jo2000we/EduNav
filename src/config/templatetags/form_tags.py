@@ -1,5 +1,5 @@
+from collections.abc import Mapping
 from django import template
-from django.utils.safestring import mark_safe
 
 register = template.Library()
 
@@ -9,9 +9,11 @@ def add_attrs(field, attrs):
 
     Updates ``field.field.widget.attrs`` in place so that subsequent filters
     (e.g. :func:`add_class`) operate on the augmented attribute set.
+    Returns the original field so filters can be chained in templates.
     """
-    field.field.widget.attrs.update(attrs)
-    return mark_safe(field.as_widget())
+    if isinstance(attrs, Mapping):
+        field.field.widget.attrs.update(attrs)
+    return field
 
 @register.filter(name="add_class")
 def add_class(field, css):
