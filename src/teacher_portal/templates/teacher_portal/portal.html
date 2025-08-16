@@ -24,7 +24,10 @@
                     <div>
                         {{ settings_form.openai_api_key.label_tag }}
                         <div class="flex items-center gap-2">
-                            {{ settings_form.openai_api_key|add_attrs:openai_attrs|add_class:"w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" }}
+                            {{ settings_form.openai_api_key
+   |add_attrs:openai_attrs
+   |add_class:"w-full rounded-xl border-gray-300 dark:border-gray-700" }}
+
                             <span x-show="ok !== null" class="inline-block w-5 h-5 rounded-full" :class="ok ? 'bg-emerald-600' : 'bg-red-600'"></span>
                         </div>
                         {% if settings_form.openai_api_key.errors %}<p class="text-red-500 text-sm">{{ settings_form.openai_api_key.errors.0 }}</p>{% endif %}
