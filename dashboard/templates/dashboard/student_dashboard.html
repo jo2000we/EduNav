@@ -140,10 +140,12 @@
     </div>
   </div>
 
-  {% with gid='goals-data-'|add:entry.id tid='time-data-'|add:entry.id sid='strategies-data-'|add:entry.id %}
-    {{ entry.goals|json_script:gid }}
-    {{ entry.time_planning|json_script:tid }}
-    {{ entry.strategies|json_script:sid }}
+  {% with eid=entry.id|stringformat:'s' %}
+    {% with gid='goals-data-'|add:eid tid='time-data-'|add:eid sid='strategies-data-'|add:eid %}
+      {{ entry.goals|json_script:gid }}
+      {{ entry.time_planning|json_script:tid }}
+      {{ entry.strategies|json_script:sid }}
+    {% endwith %}
   {% endwith %}
 
   <!-- Reflection Modal -->
