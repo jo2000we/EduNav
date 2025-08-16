@@ -74,7 +74,6 @@ def create_entry(request):
         if form.is_valid():
             entry = form.save(commit=False)
             entry.student = student
-            entry.goals = [g for g in request.POST.getlist("goals") if g.strip()]
             entry.save()
     return redirect("student_dashboard")
 
