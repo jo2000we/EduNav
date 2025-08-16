@@ -1,6 +1,7 @@
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 from accounts.models import User
 from config.models import SiteSettings
@@ -33,6 +34,13 @@ def portal(request):
                 return redirect("teacher_portal:portal")
 
     classrooms = Classroom.objects.all()
+    check_openai_key_url = reverse("teacher_portal:check_openai_key")
+    openai_attrs = {
+        "hx-post": check_openai_key_url,
+        "hx-trigger": "keyup changed delay:500ms",
+        "hx-target": "closest div",
+        "hx-swap": "none",
+    }
     return render(
         request,
         "teacher_portal/portal.html",
@@ -40,6 +48,7 @@ def portal(request):
             "settings_form": settings_form,
             "classroom_form": classroom_form,
             "classrooms": classrooms,
+            "openai_attrs": openai_attrs,
         },
     )
 
