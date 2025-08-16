@@ -23,3 +23,30 @@ class Classroom(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.teacher})"
+
+
+class Student(models.Model):
+    classroom = models.ForeignKey(
+        Classroom, related_name="students", on_delete=models.CASCADE
+    )
+    name = models.CharField(max_length=100)
+    overall_goal = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
+class LearningGoal(models.Model):
+    student = models.ForeignKey(
+        Student, related_name="goals", on_delete=models.CASCADE
+    )
+    text = models.TextField()
+    session_date = models.DateField()
+    achieved = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.student.name}: {self.text[:50]}"
