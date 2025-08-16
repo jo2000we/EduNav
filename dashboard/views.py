@@ -52,4 +52,3 @@ def student_create(request, classroom_id):
         "dashboard/student_form.html",
         {"form": form, "classroom": classroom},
     )
-
