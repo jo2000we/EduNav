@@ -16,7 +16,6 @@
             <h2 class="text-lg md:text-xl font-semibold mb-3">Site Settings</h2>
             <form method="post" x-data="{saved:false}" @submit.prevent="$el.submit(); saved=true; setTimeout(()=>saved=false,2000)" class="grid gap-4 md:gap-5">
                 {% csrf_token %}
-                {% url 'teacher_portal:check_openai_key' as check_openai_key_url %}
                 <div x-data="{ok: null}" @htmx:afterRequest="ok = $event.detail.xhr.status === 200" class="grid gap-4 md:gap-5">
                     <div>
                         {{ settings_form.allow_ai.label_tag }} {{ settings_form.allow_ai }}
@@ -25,7 +24,7 @@
                     <div>
                         {{ settings_form.openai_api_key.label_tag }}
                         <div class="flex items-center gap-2">
-                            {{ settings_form.openai_api_key.as_widget(attrs={'class': 'w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500', 'hx-post': check_openai_key_url, 'hx-trigger': 'keyup changed delay:500ms', 'hx-target': 'closest div', 'hx-swap': 'none'}) }}
+                            {{ settings_form.openai_api_key|add_attrs:openai_attrs|add_class:"w-full rounded-xl border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" }}
                             <span x-show="ok !== null" class="inline-block w-5 h-5 rounded-full" :class="ok ? 'bg-emerald-600' : 'bg-red-600'"></span>
                         </div>
                         {% if settings_form.openai_api_key.errors %}<p class="text-red-500 text-sm">{{ settings_form.openai_api_key.errors.0 }}</p>{% endif %}
