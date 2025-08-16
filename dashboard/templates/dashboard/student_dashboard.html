@@ -66,14 +66,37 @@
         <p><span class="font-semibold">Zielerreichung:</span></p>
         <ul class="list-disc list-inside">
           {% for ga in entry.goal_achievement %}
-          <li>{{ ga }}</li>
+          <li>{{ ga.goal }}: {{ ga.achievement }} - {{ ga.comment }}</li>
           {% endfor %}
         </ul>
-        {% if entry.strategy_evaluation %}<p><span class="font-semibold">Strategie:</span> {{ entry.strategy_evaluation }}</p>{% endif %}
-        {% if entry.self_assessment %}<p><span class="font-semibold">Selbsteinschätzung:</span> {{ entry.self_assessment }}</p>{% endif %}
-        {% if entry.time_management_reflection %}<p><span class="font-semibold">Zeitmanagement:</span> {{ entry.time_management_reflection }}</p>{% endif %}
-        {% if entry.emotions_reflection %}<p><span class="font-semibold">Emotionen:</span> {{ entry.emotions_reflection }}</p>{% endif %}
-        {% if entry.outlook %}<p><span class="font-semibold">Ausblick:</span> {{ entry.outlook }}</p>{% endif %}
+        {% if entry.strategy_evaluation %}
+          <p><span class="font-semibold">Strategie:</span></p>
+          <ul class="list-disc list-inside">
+            {% for se in entry.strategy_evaluation %}
+            <li>{{ se.strategy }}: {{ se.helpful }}{% if se.reason %} - {{ se.reason }}{% endif %} (erneut: {{ se.reuse }})</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+        {% if entry.learned_subject or entry.learned_work %}
+          <p><span class="font-semibold">Selbsteinschätzung:</span></p>
+          {% if entry.learned_subject %}<p>Fachlich: {{ entry.learned_subject }}</p>{% endif %}
+          {% if entry.learned_work %}<p>Arbeitsweise: {{ entry.learned_work }}</p>{% endif %}
+        {% endif %}
+        {% if entry.planning_realistic or entry.planning_deviations %}
+          <p><span class="font-semibold">Zeitmanagement:</span></p>
+          {% if entry.planning_realistic %}<p>Planung realistisch: {{ entry.planning_realistic }}</p>{% endif %}
+          {% if entry.planning_deviations %}<p>Abweichungen: {{ entry.planning_deviations }}</p>{% endif %}
+        {% endif %}
+        {% if entry.motivation_rating or entry.motivation_improve %}
+          <p><span class="font-semibold">Emotionen/Motivation:</span></p>
+          {% if entry.motivation_rating %}<p>Motivation: {{ entry.motivation_rating }}</p>{% endif %}
+          {% if entry.motivation_improve %}<p>Stärken: {{ entry.motivation_improve }}</p>{% endif %}
+        {% endif %}
+        {% if entry.next_phase or entry.strategy_outlook %}
+          <p><span class="font-semibold">Ausblick:</span></p>
+          {% if entry.next_phase %}<p>Nächste Phase: {{ entry.next_phase }}</p>{% endif %}
+          {% if entry.strategy_outlook %}<p>Strategien: {{ entry.strategy_outlook }}</p>{% endif %}
+        {% endif %}
       {% endif %}
   </div>
 
@@ -145,7 +168,7 @@
   </div>
 
   {% with eid=entry.id|stringformat:'s' %}
-    {% with gid='goals-data-'|add:eid tid='time-data-'|add:eid sid='strategies-data-'|add:eid sd='steps-data-'|add:eid tu='time-usage-data-'|add:eid sc='strategy-check-data-'|add:eid pd='problems-data-'|add:eid ed='emotions-data-'|add:eid %}
+    {% with gid='goals-data-'|add:eid tid='time-data-'|add:eid sid='strategies-data-'|add:eid sd='steps-data-'|add:eid tu='time-usage-data-'|add:eid sc='strategy-check-data-'|add:eid pd='problems-data-'|add:eid ed='emotions-data-'|add:eid ga='goal-achievement-data-'|add:eid se='strategy-evaluation-data-'|add:eid %}
       {{ entry.goals|json_script:gid }}
       {{ entry.time_planning|json_script:tid }}
       {{ entry.strategies|json_script:sid }}
@@ -154,19 +177,98 @@
       {{ entry.strategy_check|json_script:sc }}
       {{ entry.problems|json_script:pd }}
       {{ entry.emotions|json_script:ed }}
+      {{ entry.goal_achievement|json_script:ga }}
+      {{ entry.strategy_evaluation|json_script:se }}
     {% endwith %}
   {% endwith %}
 
   <!-- Reflection Modal -->
-  <div id="reflectionModal-{{ entry.id }}" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
-    <div class="relative p-4 w-full max-w-lg max-h-full">
+  <div id="reflectionModal-{{ entry.id }}" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 left-0 right-0 z-50 flex justify-center items-center w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+    <div class="relative w-full max-w-4xl max-h-full">
       <div class="relative bg-white rounded-lg shadow">
-        <div class="p-4">
+        <div class="p-6">
           <h3 class="text-lg font-semibold mb-4">Reflexion</h3>
-          <form method="post" action="{% url 'student_entry_reflection' entry.id %}">
+          <form method="post" action="{% url 'student_entry_reflection' entry.id %}" id="reflection-form-{{ entry.id }}">
             {% csrf_token %}
-            {{ reflection_form.as_p }}
-            <button type="submit" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
+            <input type="hidden" name="goal_achievement" id="goal-achievement-{{ entry.id }}">
+            <input type="hidden" name="strategy_evaluation" id="strategy-evaluation-{{ entry.id }}">
+
+            <div class="mb-4">
+              <h4 class="font-semibold mb-2">Habe ich meine Ziele erreicht? (vollständig / teilweise / nicht)</h4>
+              <table class="w-full text-left border" id="goal-achievement-table-{{ entry.id }}">
+                <thead>
+                  <tr>
+                    <th class="border px-2 py-1">Ziel</th>
+                    <th class="border px-2 py-1">Erreichung</th>
+                    <th class="border px-2 py-1">Was hat dazu beigetragen oder mich gehindert?</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <div class="mb-4">
+              <h4 class="font-semibold mb-2">Bewertung: Strategien/Vorgehensweisen</h4>
+              <table class="w-full text-left border" id="strategy-evaluation-table-{{ entry.id }}">
+                <thead>
+                  <tr>
+                    <th class="border px-2 py-1">Strategie</th>
+                    <th class="border px-2 py-1">Hat dir diese Strategie rückblickend geholfen?</th>
+                    <th class="border px-2 py-1">Warum (kurze Begründung)?</th>
+                    <th class="border px-2 py-1">Würdest du sie erneut nutzen?</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <hr class="my-4">
+            <h4 class="font-semibold mb-2">Selbsteinschätzung</h4>
+            <div class="mb-4">
+              <label class="block mb-2">Was habe ich fachlich gelernt?</label>
+              {{ reflection_form.learned_subject.as_widget(attrs={"id": "learned-subject-"|add:entry.id}) }}
+            </div>
+            <div class="mb-4">
+              <label class="block mb-2">Was habe ich über meine Arbeitsweise gelernt?</label>
+              {{ reflection_form.learned_work.as_widget(attrs={"id": "learned-work-"|add:entry.id}) }}
+            </div>
+
+            <hr class="my-4">
+            <h4 class="font-semibold mb-2">Zeitmanagement</h4>
+            <div class="mb-4">
+              <label class="block mb-2">War meine Planung realistisch?</label>
+              {{ reflection_form.planning_realistic.as_widget(attrs={"id": "planning-realistic-"|add:entry.id}) }}
+            </div>
+            <div class="mb-4">
+              <label class="block mb-2">Wo gab es Abweichungen?</label>
+              {{ reflection_form.planning_deviations.as_widget(attrs={"id": "planning-deviations-"|add:entry.id}) }}
+            </div>
+
+            <hr class="my-4">
+            <h4 class="font-semibold mb-2">Emotionen/Motivation</h4>
+            <div class="mb-4">
+              <label class="block mb-2">Wie bewerte ich meine Motivation über die Zeit hinweg?</label>
+              {{ reflection_form.motivation_rating.as_widget(attrs={"id": "motivation-rating-"|add:entry.id}) }}
+            </div>
+            <div class="mb-4">
+              <label class="block mb-2">Was könnte ich tun, um sie zu stärken?</label>
+              {{ reflection_form.motivation_improve.as_widget(attrs={"id": "motivation-improve-"|add:entry.id}) }}
+            </div>
+
+            <hr class="my-4">
+            <h4 class="font-semibold mb-2">Ausblick</h4>
+            <div class="mb-4">
+              <label class="block mb-2">Was nehme ich mir für die nächste Phase konkret vor?</label>
+              {{ reflection_form.next_phase.as_widget(attrs={"id": "next-phase-"|add:entry.id}) }}
+            </div>
+            <div class="mb-4">
+              <label class="block mb-2">Welche Strategien will ich beibehalten oder ändern?</label>
+              {{ reflection_form.strategy_outlook.as_widget(attrs={"id": "strategy-outlook-"|add:entry.id}) }}
+            </div>
+
+            <div class="text-right">
+              <button type="submit" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
+            </div>
           </form>
         </div>
       </div>
@@ -450,6 +552,149 @@ function setupExecutionModal(id) {
   form.dataset.initialized = '1';
 }
 
+function setupReflectionModal(id) {
+  const modal = document.getElementById('reflectionModal-' + id);
+  if (modal.dataset.initialized) return;
+
+  const goals = parseData('goals-data-' + id) || [];
+  const steps = parseData('steps-data-' + id) || [];
+  const strategies = parseData('strategies-data-' + id) || [];
+  const savedGA = parseData('goal-achievement-data-' + id) || [];
+  const savedSE = parseData('strategy-evaluation-data-' + id) || [];
+
+  const gaInput = document.getElementById('goal-achievement-' + id);
+  const seInput = document.getElementById('strategy-evaluation-' + id);
+  const gaBody = document.querySelector('#goal-achievement-table-' + id + ' tbody');
+  const seBody = document.querySelector('#strategy-evaluation-table-' + id + ' tbody');
+
+  const unplanned = steps.filter(g => !goals.includes(g));
+  const allGoals = goals.concat(unplanned);
+
+  const gaData = allGoals.map(g => {
+    const found = savedGA.find(item => item.goal === g) || {};
+    return {
+      goal: g,
+      unplanned: unplanned.includes(g),
+      achievement: found.achievement || '',
+      comment: found.comment || ''
+    };
+  });
+
+  const seData = strategies.map(s => {
+    const found = savedSE.find(item => item.strategy === s) || {};
+    return {
+      strategy: s,
+      helpful: found.helpful || '',
+      reason: found.reason || '',
+      reuse: found.reuse || ''
+    };
+  });
+
+  function updateHidden() {
+    gaInput.value = JSON.stringify(gaData);
+    seInput.value = JSON.stringify(seData);
+  }
+
+  function renderGoals() {
+    gaBody.innerHTML = '';
+    gaData.forEach((item, i) => {
+      const tr = document.createElement('tr');
+      const tdG = document.createElement('td');
+      tdG.className = 'border px-2 py-1';
+      tdG.textContent = item.goal + (item.unplanned ? ' (ungeplant)' : '');
+      const tdA = document.createElement('td');
+      tdA.className = 'border px-2 py-1 text-center';
+      ['vollständig','teilweise','nicht'].forEach(val => {
+        const label = document.createElement('label');
+        label.className = 'mr-2';
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'ga-' + id + '-' + i;
+        radio.value = val;
+        radio.required = true;
+        if (item.achievement === val) radio.checked = true;
+        radio.addEventListener('change', () => { item.achievement = val; updateHidden(); });
+        label.appendChild(radio);
+        label.appendChild(document.createTextNode(val));
+        tdA.appendChild(label);
+      });
+      const tdC = document.createElement('td');
+      tdC.className = 'border px-2 py-1';
+      const ta = document.createElement('textarea');
+      ta.className = 'w-full border rounded p-1';
+      ta.rows = 1;
+      ta.required = true;
+      ta.value = item.comment;
+      ta.addEventListener('input', e => { item.comment = e.target.value; updateHidden(); });
+      tdC.appendChild(ta);
+      tr.appendChild(tdG);
+      tr.appendChild(tdA);
+      tr.appendChild(tdC);
+      gaBody.appendChild(tr);
+    });
+  }
+
+  function renderStrategies() {
+    seBody.innerHTML = '';
+    seData.forEach((item, i) => {
+      const tr = document.createElement('tr');
+      const tdS = document.createElement('td');
+      tdS.className = 'border px-2 py-1';
+      tdS.textContent = item.strategy;
+      const tdH = document.createElement('td');
+      tdH.className = 'border px-2 py-1 text-center';
+      ['ja','teilweise','nein'].forEach(val => {
+        const label = document.createElement('label');
+        label.className = 'mr-2';
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'se-help-' + id + '-' + i;
+        radio.value = val;
+        radio.required = true;
+        if (item.helpful === val) radio.checked = true;
+        radio.addEventListener('change', () => { item.helpful = val; updateHidden(); });
+        label.appendChild(radio);
+        label.appendChild(document.createTextNode(val));
+        tdH.appendChild(label);
+      });
+      const tdR = document.createElement('td');
+      tdR.className = 'border px-2 py-1';
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'w-full border rounded p-1';
+      inp.value = item.reason;
+      inp.addEventListener('input', e => { item.reason = e.target.value; updateHidden(); });
+      tdR.appendChild(inp);
+      const tdU = document.createElement('td');
+      tdU.className = 'border px-2 py-1 text-center';
+      ['ja','nein','vielleicht'].forEach(val => {
+        const label = document.createElement('label');
+        label.className = 'mr-2';
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'se-reuse-' + id + '-' + i;
+        radio.value = val;
+        radio.required = true;
+        if (item.reuse === val) radio.checked = true;
+        radio.addEventListener('change', () => { item.reuse = val; updateHidden(); });
+        label.appendChild(radio);
+        label.appendChild(document.createTextNode(val));
+        tdU.appendChild(label);
+      });
+      tr.appendChild(tdS);
+      tr.appendChild(tdH);
+      tr.appendChild(tdR);
+      tr.appendChild(tdU);
+      seBody.appendChild(tr);
+    });
+  }
+
+  renderGoals();
+  renderStrategies();
+  updateHidden();
+  modal.dataset.initialized = '1';
+}
+
 function finalizeExecution(id) {
   const steps = parseData('steps-data-' + id) || [];
   const timeUsage = parseData('time-usage-data-' + id) || [];
@@ -465,7 +710,10 @@ function finalizeExecution(id) {
   } else {
     if (confirm('Wenn du fortfährst, kannst du die Durchführung nicht mehr ändern. Bist du sicher?')) {
       const modal = document.getElementById('reflectionModal-' + id);
-      if (modal) modal.classList.remove('hidden');
+      if (modal) {
+        setupReflectionModal(id);
+        modal.classList.remove('hidden');
+      }
     }
   }
 }
