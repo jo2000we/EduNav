@@ -1,3 +1,16 @@
-{% for classroom in classrooms %}
-{{ classroom.name }}
-{% endfor %}
+{% extends "dashboard/base.html" %}
+{% block content %}
+<h1 class="text-2xl mb-4">Klassenräume</h1>
+<a href="{% url 'classroom_create' %}" class="bg-blue-500 text-white px-4 py-2 rounded">Neue Klasse</a>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+    {% for classroom in classrooms %}
+        <div class="bg-white p-4 rounded shadow">
+            <h2 class="text-xl font-semibold">{{ classroom.name }}</h2>
+            <p>AI-Modus: {{ classroom.get_group_type_display }}</p>
+            <a href="{% url 'student_list' classroom.id %}" class="text-blue-600">Schüler verwalten</a>
+        </div>
+    {% empty %}
+        <p>Keine Klassenräume vorhanden.</p>
+    {% endfor %}
+</div>
+{% endblock %}
