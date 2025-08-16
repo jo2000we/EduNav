@@ -1,16 +1,63 @@
 {% extends "dashboard/base.html" %}
 {% block content %}
-<h1 class="text-2xl mb-4">Klassenräume</h1>
-<a href="{% url 'classroom_create' %}" class="bg-blue-500 text-white px-4 py-2 rounded">Neue Klasse</a>
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+<div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl">Klassenräume</h1>
+    <button data-modal-target="classroom-modal" data-modal-toggle="classroom-modal" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">Neue Klasse</button>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="classroom-list">
     {% for classroom in classrooms %}
-        <div class="bg-white p-4 rounded shadow">
-            <h2 class="text-xl font-semibold">{{ classroom.name }}</h2>
-            <p>AI-Modus: {{ classroom.get_group_type_display }}</p>
-            <a href="{% url 'student_list' classroom.id %}" class="text-blue-600">Schüler verwalten</a>
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-xl font-semibold">{{ classroom.name }}</h2>
+                <span class="text-xs font-medium px-2.5 py-0.5 rounded {% if classroom.group_type == 'EXPERIMENTAL' %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                    {{ classroom.get_group_type_display }}
+                </span>
+            </div>
+            <button
+                data-modal-target="student-modal"
+                data-modal-toggle="student-modal"
+                hx-get="{% url 'student_list' classroom.id %}"
+                hx-target="#student-modal-content"
+                hx-swap="innerHTML"
+                class="text-blue-600 hover:underline">
+                Schüler verwalten
+            </button>
         </div>
     {% empty %}
         <p>Keine Klassenräume vorhanden.</p>
     {% endfor %}
+</div>
+
+<!-- Student modal -->
+<div id="student-modal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+  <div class="relative p-4 w-full max-w-md max-h-full">
+    <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+      <div class="flex items-center justify-between p-4 border-b rounded-t dark:border-gray-600">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Schüler verwalten</h3>
+        <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-hide="student-modal">
+          <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 1l12 12M13 1L1 13"/></svg>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+      <div id="student-modal-content" class="p-4"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal container -->
+<div id="classroom-modal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+  <div class="relative p-4 w-full max-w-md max-h-full">
+    <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+      <div class="flex items-center justify-between p-4 border-b rounded-t dark:border-gray-600">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Neue Klasse</h3>
+        <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-hide="classroom-modal">
+          <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 1l12 12M13 1L1 13"/></svg>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+      <div id="classroom-form-container" hx-get="{% url 'classroom_create' %}" hx-trigger="revealed" hx-target="#classroom-form-container" hx-swap="innerHTML"></div>
+    </div>
+  </div>
 </div>
 {% endblock %}
