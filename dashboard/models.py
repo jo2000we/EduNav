@@ -23,3 +23,17 @@ class Classroom(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.teacher})"
+
+
+class Student(models.Model):
+    classroom = models.ForeignKey(
+        Classroom, related_name="students", on_delete=models.CASCADE
+    )
+    pseudonym = models.CharField(max_length=50)
+    login_code = models.CharField(max_length=20, blank=True)
+
+    class Meta:
+        unique_together = ("classroom", "pseudonym")
+
+    def __str__(self):
+        return f"{self.pseudonym} ({self.classroom.name})"
