@@ -9,7 +9,7 @@
 <body class="bg-gray-100">
     <nav class="bg-white shadow p-4 flex justify-between">
         <span class="font-bold">EduNav</span>
-        <a href="{% url 'logout' %}" class="text-blue-500">Logout</a>
+        <a href="{% if request.session.student_id %}{% url 'student_logout' %}{% else %}{% url 'logout' %}{% endif %}" class="text-blue-500">Logout</a>
     </nav>
     <main class="container mx-auto p-6">
         {% block content %}{% endblock %}

@@ -55,4 +55,33 @@ class LearningGoal(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.student.name}: {self.text[:50]}"
+        return f"{self.student.pseudonym}: {self.text[:50]}"
+
+class SRLEntry(models.Model):
+    student = models.ForeignKey(Student, related_name="entries", on_delete=models.CASCADE)
+    session_date = models.DateField()
+    # Planning
+    goal = models.TextField()
+    priorities = models.TextField(blank=True)
+    strategies = models.TextField(blank=True)
+    resources = models.TextField(blank=True)
+    time_planning = models.TextField(blank=True)
+    expectations = models.TextField(blank=True)
+    # Execution
+    steps = models.TextField(blank=True)
+    time_usage = models.TextField(blank=True)
+    strategy_check = models.TextField(blank=True)
+    problems = models.TextField(blank=True)
+    emotions = models.TextField(blank=True)
+    # Reflection
+    goal_achievement = models.TextField(blank=True)
+    strategy_evaluation = models.TextField(blank=True)
+    self_assessment = models.TextField(blank=True)
+    time_management_reflection = models.TextField(blank=True)
+    emotions_reflection = models.TextField(blank=True)
+    outlook = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.student.pseudonym}: {self.session_date}"
