@@ -2,6 +2,45 @@
 {% load form_tags %}
 
 {% block content %}
+
+<style>
+  .timeline-container { position: relative; }
+  .timeline-container::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #e5e7eb;
+  }
+  .timeline-entry { position: relative; padding-top: 2rem; }
+  .timeline-entry::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 0;
+    transform: translate(-50%, -50%);
+    width: 1rem;
+    height: 1rem;
+    border-radius: 9999px;
+    background: #3b82f6;
+  }
+  .timeline-card {
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+  @keyframes zoomIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .modal-content {
+    animation: zoomIn 0.3s ease;
+  }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
 <h2 class="text-2xl font-bold mb-4">Hallo {{ student.pseudonym }}</h2>
 
 <div class="mb-6 bg-white p-4 rounded shadow">
@@ -15,96 +54,120 @@
 
 <button data-modal-target="planningModal" data-modal-toggle="planningModal" class="mb-4 bg-green-500 text-white px-4 py-2 rounded">Neues Tagesziel</button>
 
-<div class="grid gap-4 md:grid-cols-2">
+<div id="timeline" class="timeline-container space-y-16">
   {% for entry in entries %}
-  <div class="bg-white p-4 rounded shadow">
-    <h4 class="font-semibold">{{ entry.session_date }}</h4>
-    {% if entry.goals %}
-    <p class="mt-2"><span class="font-semibold">Ziele:</span></p>
-    <ul class="list-disc list-inside">
-      {% for g in entry.goals %}
-      <li>{{ g }}</li>
-      {% endfor %}
-    </ul>
-    {% endif %}
-    {% if entry.priorities %}<p><span class="font-semibold">Prioritäten:</span> {{ entry.priorities }}</p>{% endif %}
-    {% if entry.strategies %}<p><span class="font-semibold">Strategien:</span> {{ entry.strategies }}</p>{% endif %}
-    {% if entry.resources %}<p><span class="font-semibold">Ressourcen:</span> {{ entry.resources }}</p>{% endif %}
-    {% if entry.time_planning %}<p><span class="font-semibold">Zeitplanung:</span> {{ entry.time_planning }}</p>{% endif %}
-    {% if entry.expectations %}<p><span class="font-semibold">Erwartungen:</span> {{ entry.expectations }}</p>{% endif %}
-
-    {% if entry.steps %}
-      <hr class="my-2">
-      <h5 class="font-semibold">Durchführung</h5>
-      <ul class="list-disc list-inside">
-        {% for s in entry.steps %}
-        <li>{{ s }}</li>
-        {% endfor %}
-      </ul>
-      {% if entry.time_usage %}
-        <p><span class="font-semibold">Zeitnutzung:</span></p>
-        <ul class="list-disc list-inside">
-          {% for t in entry.time_usage %}
-          <li>{{ t }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-      {% if entry.strategy_check %}<p><span class="font-semibold">Strategiecheck:</span> {{ entry.strategy_check }}</p>{% endif %}
-      {% if entry.problems %}<p><span class="font-semibold">Probleme:</span> {{ entry.problems }}</p>{% endif %}
-      {% if entry.emotions %}<p><span class="font-semibold">Emotionen:</span> {{ entry.emotions }}</p>{% endif %}
-    {% endif %}
-
-    {% if not entry.goal_achievement %}
-      <div class="mt-2 flex gap-2">
-        <button data-modal-target="executionModal-{{ entry.id }}" data-modal-toggle="executionModal-{{ entry.id }}" onclick="setupExecutionModal({{ entry.id }})" class="bg-blue-500 text-white px-3 py-1 rounded">Durchführung protokollieren</button>
-        <button onclick="finalizeExecution({{ entry.id }})" class="bg-red-500 text-white px-3 py-1 rounded">Durchführung abschließen und reflektieren</button>
-      </div>
-    {% endif %}
-
-      {% if entry.goal_achievement %}
-        <hr class="my-2">
-        <h5 class="font-semibold">Reflexion</h5>
-        <p><span class="font-semibold">Zielerreichung:</span></p>
-        <ul class="list-disc list-inside">
-          {% for ga in entry.goal_achievement %}
-          <li>{{ ga.goal }}: {{ ga.achievement }} - {{ ga.comment }}</li>
-          {% endfor %}
-        </ul>
-        {% if entry.strategy_evaluation %}
+    <div class="timeline-entry" data-entry="{{ entry.id }}">
+      <div class="timeline-card bg-white p-4 rounded shadow mx-auto w-full max-w-xl">
+        <h4 class="font-semibold text-center">{{ entry.session_date }}</h4>
+        <div id="summary-{{ entry.id }}" class="summary text-center text-gray-500"></div>
+        <div class="details mt-2 space-y-2">
+          {% if entry.goals %}
+          <div>
+            <p class="font-semibold">Ziele:</p>
+            <div id="goals-{{ entry.id }}" class="flex flex-wrap gap-2"></div>
+          </div>
+          {% endif %}
+          {% if entry.priorities %}
+          <div>
+            <p class="font-semibold">Prioritäten:</p>
+            <div id="priorities-{{ entry.id }}" class="text-sm"></div>
+          </div>
+          {% endif %}
+          {% if entry.strategies %}
+          <div>
+            <p class="font-semibold">Strategien:</p>
+            <div id="strategies-{{ entry.id }}" class="flex flex-wrap gap-2"></div>
+          </div>
+          {% endif %}
+          {% if entry.resources %}
+          <div>
+            <p class="font-semibold">Ressourcen:</p>
+            <div id="resources-{{ entry.id }}" class="flex flex-wrap gap-2"></div>
+          </div>
+          {% endif %}
+          {% if entry.time_planning %}
+          <div>
+            <p class="font-semibold">Zeitplanung:</p>
+            <div id="time-{{ entry.id }}" class="space-y-1"></div>
+          </div>
+          {% endif %}
+          {% if entry.expectations %}
+          <div>
+            <p class="font-semibold">Erwartungen:</p>
+            <div id="expectations-{{ entry.id }}" class="space-y-1"></div>
+          </div>
+          {% endif %}
+          {% if entry.steps %}
+          <hr class="my-2">
+          <h5 class="font-semibold">Durchführung</h5>
+          <ul class="list-disc list-inside">
+            {% for s in entry.steps %}
+            <li>{{ s }}</li>
+            {% endfor %}
+          </ul>
+          {% if entry.time_usage %}
+          <p><span class="font-semibold">Zeitnutzung:</span></p>
+          <ul class="list-disc list-inside">
+            {% for t in entry.time_usage %}
+            <li>{{ t }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+          {% if entry.strategy_check %}<p><span class="font-semibold">Strategiecheck:</span> {{ entry.strategy_check }}</p>{% endif %}
+          {% if entry.problems %}<p><span class="font-semibold">Probleme:</span> {{ entry.problems }}</p>{% endif %}
+          {% if entry.emotions %}<p><span class="font-semibold">Emotionen:</span> {{ entry.emotions }}</p>{% endif %}
+          {% endif %}
+          {% if not entry.goal_achievement %}
+          <div class="mt-2 flex gap-2">
+            <button data-modal-target="executionModal-{{ entry.id }}" data-modal-toggle="executionModal-{{ entry.id }}" onclick="setupExecutionModal({{ entry.id }})" class="bg-blue-500 text-white px-3 py-1 rounded">Durchführung protokollieren</button>
+            <button onclick="finalizeExecution({{ entry.id }})" class="bg-red-500 text-white px-3 py-1 rounded">Durchführung abschließen und reflektieren</button>
+          </div>
+          {% endif %}
+          {% if entry.goal_achievement %}
+          <hr class="my-2">
+          <h5 class="font-semibold">Reflexion</h5>
+          <p><span class="font-semibold">Zielerreichung:</span></p>
+          <ul class="list-disc list-inside">
+            {% for ga in entry.goal_achievement %}
+            <li>{{ ga.goal }}: {{ ga.achievement }} - {{ ga.comment }}</li>
+            {% endfor %}
+          </ul>
+          {% if entry.strategy_evaluation %}
           <p><span class="font-semibold">Strategie:</span></p>
           <ul class="list-disc list-inside">
             {% for se in entry.strategy_evaluation %}
             <li>{{ se.strategy }}: {{ se.helpful }}{% if se.reason %} - {{ se.reason }}{% endif %} (erneut: {{ se.reuse }})</li>
             {% endfor %}
           </ul>
-        {% endif %}
-        {% if entry.learned_subject or entry.learned_work %}
+          {% endif %}
+          {% if entry.learned_subject or entry.learned_work %}
           <p><span class="font-semibold">Selbsteinschätzung:</span></p>
           {% if entry.learned_subject %}<p>Fachlich: {{ entry.learned_subject }}</p>{% endif %}
           {% if entry.learned_work %}<p>Arbeitsweise: {{ entry.learned_work }}</p>{% endif %}
-        {% endif %}
-        {% if entry.planning_realistic or entry.planning_deviations %}
+          {% endif %}
+          {% if entry.planning_realistic or entry.planning_deviations %}
           <p><span class="font-semibold">Zeitmanagement:</span></p>
           {% if entry.planning_realistic %}<p>Planung realistisch: {{ entry.planning_realistic }}</p>{% endif %}
           {% if entry.planning_deviations %}<p>Abweichungen: {{ entry.planning_deviations }}</p>{% endif %}
-        {% endif %}
-        {% if entry.motivation_rating or entry.motivation_improve %}
+          {% endif %}
+          {% if entry.motivation_rating or entry.motivation_improve %}
           <p><span class="font-semibold">Emotionen/Motivation:</span></p>
           {% if entry.motivation_rating %}<p>Motivation: {{ entry.motivation_rating }}</p>{% endif %}
           {% if entry.motivation_improve %}<p>Stärken: {{ entry.motivation_improve }}</p>{% endif %}
-        {% endif %}
-        {% if entry.next_phase or entry.strategy_outlook %}
+          {% endif %}
+          {% if entry.next_phase or entry.strategy_outlook %}
           <p><span class="font-semibold">Ausblick:</span></p>
           {% if entry.next_phase %}<p>Nächste Phase: {{ entry.next_phase }}</p>{% endif %}
           {% if entry.strategy_outlook %}<p>Strategien: {{ entry.strategy_outlook }}</p>{% endif %}
-        {% endif %}
-      {% endif %}
-  </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
 
   <!-- Execution Modal -->
   <div id="executionModal-{{ entry.id }}" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
     <div class="relative p-4 w-full max-w-2xl max-h-full">
-      <div class="relative bg-white rounded-lg shadow">
+      <div class="relative bg-white rounded-lg shadow modal-content">
         <div class="p-4">
           <h3 class="text-lg font-semibold mb-4">Durchführung</h3>
           <form method="post" action="{% url 'student_entry_execution' entry.id %}" id="execution-form-{{ entry.id }}">
@@ -159,8 +222,8 @@
 
   <!-- Unplanned Activity Modal -->
   <div id="unplannedModal-{{ entry.id }}" class="hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-center w-full h-full bg-black bg-opacity-50">
-    <div class="bg-white p-4 rounded shadow w-full max-w-md">
-      <h3 class="text-lg font-semibold mb-4">Ein Ziel mit dem sich beschäftigt wurde, das jedoch nicht geplant war, hinzufügen</h3>
+      <div class="bg-white p-4 rounded shadow w-full max-w-md modal-content">
+        <h3 class="text-lg font-semibold mb-4">Ein Ziel mit dem sich beschäftigt wurde, das jedoch nicht geplant war, hinzufügen</h3>
       <input type="text" id="unplanned-input-{{ entry.id }}" class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5">
       <div class="mt-4 text-right">
         <button type="button" id="unplanned-save-{{ entry.id }}" class="bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
@@ -168,25 +231,28 @@
     </div>
   </div>
 
-  {% with eid=entry.id|stringformat:'s' %}
-    {% with gid='goals-data-'|add:eid tid='time-data-'|add:eid sid='strategies-data-'|add:eid sd='steps-data-'|add:eid tu='time-usage-data-'|add:eid sc='strategy-check-data-'|add:eid pd='problems-data-'|add:eid ed='emotions-data-'|add:eid ga='goal-achievement-data-'|add:eid se='strategy-evaluation-data-'|add:eid %}
-      {{ entry.goals|json_script:gid }}
-      {{ entry.time_planning|json_script:tid }}
-      {{ entry.strategies|json_script:sid }}
-      {{ entry.steps|json_script:sd }}
-      {{ entry.time_usage|json_script:tu }}
-      {{ entry.strategy_check|json_script:sc }}
-      {{ entry.problems|json_script:pd }}
-      {{ entry.emotions|json_script:ed }}
-      {{ entry.goal_achievement|json_script:ga }}
-      {{ entry.strategy_evaluation|json_script:se }}
+    {% with eid=entry.id|stringformat:'s' %}
+      {% with gid='goals-data-'|add:eid tid='time-data-'|add:eid sid='strategies-data-'|add:eid pr='priorities-data-'|add:eid rid='resources-data-'|add:eid ex='expectations-data-'|add:eid sd='steps-data-'|add:eid tu='time-usage-data-'|add:eid sc='strategy-check-data-'|add:eid pd='problems-data-'|add:eid ed='emotions-data-'|add:eid ga='goal-achievement-data-'|add:eid se='strategy-evaluation-data-'|add:eid %}
+        {{ entry.goals|json_script:gid }}
+        {{ entry.time_planning|json_script:tid }}
+          {{ entry.strategies|json_script:sid }}
+          {{ entry.priorities|json_script:pr }}
+          {{ entry.resources|json_script:rid }}
+          {{ entry.expectations|json_script:ex }}
+          {{ entry.steps|json_script:sd }}
+        {{ entry.time_usage|json_script:tu }}
+        {{ entry.strategy_check|json_script:sc }}
+        {{ entry.problems|json_script:pd }}
+        {{ entry.emotions|json_script:ed }}
+        {{ entry.goal_achievement|json_script:ga }}
+        {{ entry.strategy_evaluation|json_script:se }}
     {% endwith %}
   {% endwith %}
 
   <!-- Reflection Modal -->
   <div id="reflectionModal-{{ entry.id }}" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 left-0 right-0 z-50 flex justify-center items-center w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
     <div class="relative w-full max-w-4xl max-h-full">
-      <div class="relative bg-white rounded-lg shadow">
+      <div class="relative bg-white rounded-lg shadow modal-content">
         <div class="p-6">
           <h3 class="text-lg font-semibold mb-4">Reflexion</h3>
           <form method="post" action="{% url 'student_entry_reflection' entry.id %}" id="reflection-form-{{ entry.id }}">
@@ -297,7 +363,7 @@
 <!-- Planning Modal -->
 <div id="planningModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
   <div class="relative p-4 w-full max-w-2xl max-h-full">
-    <div class="relative bg-white rounded-lg shadow">
+    <div class="relative bg-white rounded-lg shadow modal-content">
       <div class="p-4">
         <h3 class="text-lg font-semibold mb-4">Tagesplanung</h3>
         <form method="post" action="{% url 'student_entry_create' %}" id="planning-form">
@@ -357,7 +423,7 @@
 
 <!-- Goal Modal -->
 <div id="goalModal" class="hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-center w-full h-full bg-black bg-opacity-50">
-  <div class="bg-white p-4 rounded shadow w-full max-w-md">
+  <div class="bg-white p-4 rounded shadow w-full max-w-md modal-content">
     <h3 class="text-lg font-semibold mb-4">Ein Ziel festlegen</h3>
     <input type="text" id="goal-input" class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5">
     <div class="mt-4 text-right">
@@ -368,7 +434,7 @@
 
 <!-- Strategy Modal -->
 <div id="strategyModal" class="hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-center w-full h-full bg-black bg-opacity-50">
-  <div class="bg-white p-4 rounded shadow w-full max-w-md">
+  <div class="bg-white p-4 rounded shadow w-full max-w-md modal-content">
     <h3 class="text-lg font-semibold mb-4">Vorgehen/Strategie hinzufügen</h3>
     <input type="text" id="strategy-input" class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5">
     <div class="mt-4 text-right">
@@ -379,7 +445,7 @@
 
 <!-- Resource Modal -->
 <div id="resourceModal" class="hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-center w-full h-full bg-black bg-opacity-50">
-  <div class="bg-white p-4 rounded shadow w-full max-w-md">
+  <div class="bg-white p-4 rounded shadow w-full max-w-md modal-content">
     <h3 class="text-lg font-semibold mb-4">Ressource hinzufügen</h3>
     <input type="text" id="resource-input" class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5">
     <div class="mt-4 text-right">
@@ -735,7 +801,7 @@ function finalizeExecution(id) {
   }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', function() {
   const goals = [];
   const priorities = [];
   const strategies = [];
@@ -935,7 +1001,55 @@ document.addEventListener('DOMContentLoaded', function() {
     updateHidden();
   });
 
-});
-</script>
+    document.querySelectorAll('[id^="priorities-"]').forEach(el => {
+      const id = el.id.split('-')[1];
+      const data = parseData('priorities-data-' + id) || [];
+      if (data.length) {
+        el.innerHTML = data.map(p => p.priority ? '<span class="underline">' + p.goal + '</span>' : p.goal).join(' &rarr; ');
+      }
+    });
+
+    document.querySelectorAll('.timeline-entry').forEach(entry => {
+      const id = entry.dataset.entry;
+      const goals = parseData('goals-data-' + id) || [];
+      const summary = document.getElementById('summary-' + id);
+      if (summary && goals.length) summary.textContent = goals[0];
+      const goalsEl = document.getElementById('goals-' + id);
+      if (goalsEl) goalsEl.innerHTML = goals.map(g => `<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">${g}</span>`).join('');
+      const strategies = parseData('strategies-data-' + id) || [];
+      const strategiesEl = document.getElementById('strategies-' + id);
+      if (strategiesEl) strategiesEl.innerHTML = strategies.map(s => `<span class="bg-purple-100 text-purple-800 px-2 py-1 rounded-full">${s}</span>`).join('');
+      const resources = parseData('resources-data-' + id) || [];
+      const resourcesEl = document.getElementById('resources-' + id);
+      if (resourcesEl) resourcesEl.innerHTML = resources.map(r => `<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full">${r}</span>`).join('');
+      const time = parseData('time-data-' + id) || [];
+      const timeEl = document.getElementById('time-' + id);
+      if (timeEl) timeEl.innerHTML = time.map(t => `<div class="flex items-center"><span>${t.goal}</span><span class="ml-auto text-sm text-gray-500">${t.time}</span></div>`).join('');
+      const expectations = parseData('expectations-data-' + id) || [];
+      const expEl = document.getElementById('expectations-' + id);
+      if (expEl) expEl.innerHTML = expectations.map(e => `<div>${e.goal} &rarr; ${e.indicator}</div>`).join('');
+    });
+
+    if (window.gsap && window.ScrollTrigger) {
+      gsap.registerPlugin(ScrollTrigger);
+      gsap.utils.toArray('.timeline-card').forEach(card => {
+        const details = card.querySelector('.details');
+        const summary = card.querySelector('.summary');
+        gsap.set(card, {opacity:0.5, scale:0.9});
+        gsap.set(details, {height:0, overflow:'hidden'});
+        ScrollTrigger.create({
+          trigger: card,
+          start: 'top center',
+          end: 'bottom center',
+          onEnter: () => { gsap.to(card,{scale:1,opacity:1}); gsap.to(details,{height:'auto'}); gsap.to(summary,{opacity:0}); },
+          onLeave: () => { gsap.to(card,{scale:0.9,opacity:0.5}); gsap.to(details,{height:0}); gsap.to(summary,{opacity:1}); },
+          onEnterBack: () => { gsap.to(card,{scale:1,opacity:1}); gsap.to(details,{height:'auto'}); gsap.to(summary,{opacity:0}); },
+          onLeaveBack: () => { gsap.to(card,{scale:0.9,opacity:0.5}); gsap.to(details,{height:0}); gsap.to(summary,{opacity:1}); }
+        });
+      });
+    }
+
+  });
+  </script>
 
 {% endblock %}
