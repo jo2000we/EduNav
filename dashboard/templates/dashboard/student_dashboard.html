@@ -3,6 +3,11 @@
 
 {% block content %}
 
+<link rel="stylesheet" href="https://unpkg.com/aos@2.3.4/dist/aos.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+<script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+
 <style>
   .timeline-container { position: relative; }
   .timeline-container::before {
@@ -26,13 +31,7 @@
     border-radius: 9999px;
     background: #3b82f6;
   }
-  .timeline-card {
-    transition: transform 0.3s, opacity 0.3s;
-  }
-  .timeline-card.inactive {
-    opacity: 0.4;
-    transform: scale(0.9);
-  }
+  .timeline-card { overflow: hidden; }
   @keyframes zoomIn {
     from { opacity: 0; transform: scale(0.95); }
     to { opacity: 1; transform: scale(1); }
@@ -58,8 +57,10 @@
 <div id="timeline" class="timeline-container space-y-16">
   {% for entry in entries %}
   <div class="timeline-entry" data-entry="{{ entry.id }}">
-    <div class="timeline-card inactive bg-white p-4 rounded shadow mx-auto w-full max-w-xl">
+    <div class="timeline-card bg-white p-4 rounded shadow mx-auto w-full max-w-xl" data-aos="fade-up">
     <h4 class="font-semibold text-center">{{ entry.session_date }}</h4>
+    <div id="summary-{{ entry.id }}" class="summary text-center text-sm text-gray-600 mt-1"></div>
+    <div class="details mt-2">
     {% if entry.goals %}
     <p class="mt-2"><span class="font-semibold">Ziele:</span></p>
     <ul class="list-disc list-inside">
@@ -69,10 +70,22 @@
     </ul>
     {% endif %}
     {% if entry.priorities %}<p><span class="font-semibold">Prioritäten:</span> <span id="priorities-{{ entry.id }}"></span></p>{% endif %}
-    {% if entry.strategies %}<p><span class="font-semibold">Strategien:</span> {{ entry.strategies }}</p>{% endif %}
-    {% if entry.resources %}<p><span class="font-semibold">Ressourcen:</span> {{ entry.resources }}</p>{% endif %}
-    {% if entry.time_planning %}<p><span class="font-semibold">Zeitplanung:</span> {{ entry.time_planning }}</p>{% endif %}
-    {% if entry.expectations %}<p><span class="font-semibold">Erwartungen:</span> {{ entry.expectations }}</p>{% endif %}
+    {% if entry.strategies %}
+    <p class="mt-2"><span class="font-semibold">Strategien:</span></p>
+    <ul id="strategies-{{ entry.id }}" class="flex flex-wrap gap-2"></ul>
+    {% endif %}
+    {% if entry.resources %}
+    <p class="mt-2"><span class="font-semibold">Ressourcen:</span></p>
+    <ul id="resources-{{ entry.id }}" class="flex flex-wrap gap-2"></ul>
+    {% endif %}
+    {% if entry.time_planning %}
+    <p class="mt-2"><span class="font-semibold">Zeitplanung:</span></p>
+    <ul id="time-plan-{{ entry.id }}" class="space-y-1"></ul>
+    {% endif %}
+    {% if entry.expectations %}
+    <p class="mt-2"><span class="font-semibold">Erwartungen:</span></p>
+    <ul id="expectations-{{ entry.id }}" class="space-y-1"></ul>
+    {% endif %}
 
     {% if entry.steps %}
       <hr class="my-2">
@@ -140,6 +153,7 @@
           {% if entry.strategy_outlook %}<p>Strategien: {{ entry.strategy_outlook }}</p>{% endif %}
         {% endif %}
       {% endif %}
+    </div>
     </div>
   </div>
 
@@ -211,11 +225,13 @@
   </div>
 
   {% with eid=entry.id|stringformat:'s' %}
-    {% with gid='goals-data-'|add:eid tid='time-data-'|add:eid sid='strategies-data-'|add:eid pr='priorities-data-'|add:eid sd='steps-data-'|add:eid tu='time-usage-data-'|add:eid sc='strategy-check-data-'|add:eid pd='problems-data-'|add:eid ed='emotions-data-'|add:eid ga='goal-achievement-data-'|add:eid se='strategy-evaluation-data-'|add:eid %}
+    {% with gid='goals-data-'|add:eid tid='time-data-'|add:eid sid='strategies-data-'|add:eid pr='priorities-data-'|add:eid rd='resources-data-'|add:eid ex='expectations-data-'|add:eid sd='steps-data-'|add:eid tu='time-usage-data-'|add:eid sc='strategy-check-data-'|add:eid pd='problems-data-'|add:eid ed='emotions-data-'|add:eid ga='goal-achievement-data-'|add:eid se='strategy-evaluation-data-'|add:eid %}
         {{ entry.goals|json_script:gid }}
         {{ entry.time_planning|json_script:tid }}
         {{ entry.strategies|json_script:sid }}
         {{ entry.priorities|json_script:pr }}
+        {{ entry.resources|json_script:rd }}
+        {{ entry.expectations|json_script:ex }}
         {{ entry.steps|json_script:sd }}
         {{ entry.time_usage|json_script:tu }}
         {{ entry.strategy_check|json_script:sc }}
@@ -778,26 +794,37 @@ function finalizeExecution(id) {
   }
 }
 
-function updateActiveEntry() {
+function initTimelineAnimations() {
   const entries = document.querySelectorAll('.timeline-entry');
-  let closest = null;
-  let minDist = Infinity;
-  entries.forEach(entry => {
-    const rect = entry.getBoundingClientRect();
-    const dist = Math.abs(rect.top + rect.height / 2 - window.innerHeight / 2);
-    if (dist < minDist) {
-      minDist = dist;
-      closest = entry;
-    }
-  });
+  const setActive = active => {
+    entries.forEach(entry => {
+      const card = entry.querySelector('.timeline-card');
+      const details = card.querySelector('.details');
+      if (entry === active) {
+        gsap.to(card, {scale:1, opacity:1, duration:0.4});
+        gsap.to(details, {height:'auto', opacity:1, duration:0.4});
+      } else {
+        gsap.to(card, {scale:0.8, opacity:0.3, duration:0.4});
+        gsap.to(details, {height:0, opacity:0, duration:0.4});
+      }
+    });
+  };
+  gsap.registerPlugin(ScrollTrigger);
   entries.forEach(entry => {
     const card = entry.querySelector('.timeline-card');
-    if (entry === closest) {
-      card.classList.remove('inactive');
-    } else {
-      card.classList.add('inactive');
-    }
+    const details = card.querySelector('.details');
+    gsap.set(details, {height:0, opacity:0});
+    gsap.set(card, {scale:0.8, opacity:0.3});
+    gsap.from(entry, {opacity:0, y:40, duration:0.6, ease:'power2.out', scrollTrigger:{trigger:entry,start:'top 80%'}});
+    ScrollTrigger.create({
+      trigger: entry,
+      start: 'top center',
+      end: 'bottom center',
+      onEnter: () => setActive(entry),
+      onEnterBack: () => setActive(entry)
+    });
   });
+  if (entries.length) setActive(entries[0]);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -1000,17 +1027,60 @@ document.addEventListener('DOMContentLoaded', function() {
     updateHidden();
   });
 
-  document.querySelectorAll('[id^="priorities-"]').forEach(el => {
-    const id = el.id.split('-')[1];
-    const data = parseData('priorities-data-' + id) || [];
-    if (data.length) {
-      el.innerHTML = data.map(p => p.priority ? '<span class="underline">' + p.goal + '</span>' : p.goal).join(' &rarr; ');
+  document.querySelectorAll('.timeline-entry').forEach(entry => {
+    const id = entry.dataset.entry;
+    const prData = parseData('priorities-data-' + id) || [];
+    const stData = parseData('strategies-data-' + id) || [];
+    const resData = parseData('resources-data-' + id) || [];
+    const tpData = parseData('time-data-' + id) || [];
+    const exData = parseData('expectations-data-' + id) || [];
+
+    const prSpan = document.getElementById('priorities-' + id);
+    if (prSpan && prData.length) {
+      prSpan.innerHTML = prData.map(p => p.priority ? '<span class="underline">' + p.goal + '</span>' : p.goal).join(' &rarr; ');
+    }
+    const summary = document.getElementById('summary-' + id);
+    if (summary && prData.length) {
+      summary.innerHTML = prData.map(p => p.priority ? '<span class="font-semibold underline">' + p.goal + '</span>' : p.goal).join(' &rarr; ');
+    }
+    const stratList = document.getElementById('strategies-' + id);
+    if (stratList) {
+      stData.forEach(s => {
+        const li=document.createElement('li');
+        li.className='bg-purple-100 text-purple-800 px-2 py-1 rounded-full';
+        li.textContent=s;
+        stratList.appendChild(li);
+      });
+    }
+    const resList = document.getElementById('resources-' + id);
+    if (resList) {
+      resData.forEach(r => {
+        const li=document.createElement('li');
+        li.className='bg-green-100 text-green-800 px-2 py-1 rounded-full';
+        li.textContent=r;
+        resList.appendChild(li);
+      });
+    }
+    const tpList = document.getElementById('time-plan-' + id);
+    if (tpList) {
+      tpData.forEach(tp => {
+        const li=document.createElement('li');
+        li.textContent = tp.goal + ': ' + tp.time;
+        tpList.appendChild(li);
+      });
+    }
+    const exList = document.getElementById('expectations-' + id);
+    if (exList) {
+      exData.forEach(ex => {
+        const li=document.createElement('li');
+        li.textContent = ex.goal + ' → ' + ex.indicator;
+        exList.appendChild(li);
+      });
     }
   });
 
-  updateActiveEntry();
-  window.addEventListener('scroll', updateActiveEntry);
-  window.addEventListener('resize', updateActiveEntry);
+  AOS.init();
+  initTimelineAnimations();
 
 });
 </script>
