@@ -4,6 +4,11 @@
 {% block content %}
 <h2 class="text-2xl font-bold mb-4">Hallo {{ student.pseudonym }}</h2>
 
+<style>
+  .timeline-entry {transition: transform 0.3s ease, opacity 0.3s ease; opacity:0.6; transform:scale(0.9);}
+  .timeline-entry.active {opacity:1; transform:scale(1);}
+</style>
+
 <div class="mb-6 bg-white p-4 rounded shadow">
   <h3 class="font-semibold mb-2">Gesamtziel</h3>
   <form method="post" action="{% url 'student_overall_goal' %}">
@@ -15,9 +20,11 @@
 
 <button data-modal-target="planningModal" data-modal-toggle="planningModal" class="mb-4 bg-green-500 text-white px-4 py-2 rounded">Neues Tagesziel</button>
 
-<div class="grid gap-4 md:grid-cols-2">
+<div class="relative">
+  <div class="absolute left-1/2 top-0 bottom-0 transform -translate-x-1/2 border-l-2 border-gray-300"></div>
+  <div class="space-y-8 pt-6">
   {% for entry in entries %}
-  <div class="bg-white p-4 rounded shadow">
+  <div class="timeline-entry bg-white p-4 rounded shadow max-w-md mx-auto" data-aos="fade-up">
     <h4 class="font-semibold">{{ entry.session_date }}</h4>
     {% if entry.goals %}
     <p class="mt-2"><span class="font-semibold">Ziele:</span></p>
@@ -27,7 +34,13 @@
       {% endfor %}
     </ul>
     {% endif %}
-    {% if entry.priorities %}<p><span class="font-semibold">Prioritäten:</span> {{ entry.priorities }}</p>{% endif %}
+    {% if entry.priorities %}
+    <p><span class="font-semibold">Prioritäten:</span>
+      {% for p in entry.priorities %}
+        <span class="{% if p.priority %}underline{% endif %}">{{ p.goal }}</span>{% if not forloop.last %} &rarr; {% endif %}
+      {% endfor %}
+    </p>
+    {% endif %}
     {% if entry.strategies %}<p><span class="font-semibold">Strategien:</span> {{ entry.strategies }}</p>{% endif %}
     {% if entry.resources %}<p><span class="font-semibold">Ressourcen:</span> {{ entry.resources }}</p>{% endif %}
     {% if entry.time_planning %}<p><span class="font-semibold">Zeitplanung:</span> {{ entry.time_planning }}</p>{% endif %}
@@ -292,6 +305,7 @@
     </div>
   </div>
   {% endfor %}
+  </div>
 </div>
 
 <!-- Planning Modal -->
@@ -931,11 +945,29 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('resourceModal').classList.add('hidden');
   });
 
-  document.getElementById('planning-form').addEventListener('submit', () => {
+document.getElementById('planning-form').addEventListener('submit', () => {
     updateHidden();
   });
 
 });
 </script>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const entries = document.querySelectorAll('.timeline-entry');
+  const observer = new IntersectionObserver((obsEntries) => {
+    obsEntries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('active');
+      } else {
+        entry.target.classList.remove('active');
+      }
+    });
+  }, { threshold: 0.6 });
+  entries.forEach(el => observer.observe(el));
+});
+</script>
 {% endblock %}
