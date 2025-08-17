@@ -1090,8 +1090,19 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('resourceModal').classList.add('hidden');
   });
 
-  document.getElementById('planning-form').addEventListener('submit', () => {
+  document.getElementById('planning-form').addEventListener('submit', (e) => {
     updateHidden();
+    const missing = [];
+    if (!goals.length) missing.push('Mindestens ein Ziel');
+    if (!priorities.some(p => p.priority)) missing.push('Mindestens eine Priorität');
+    if (!strategies.length) missing.push('Mindestens eine Strategie');
+    if (!resources.length) missing.push('Mindestens eine Ressource');
+    if (timePlanning.some(t => !t.time || t.time === '00:00')) missing.push('Zeitplanung für jedes Ziel');
+    if (expectations.some(e => !e.indicator || !e.indicator.trim())) missing.push('Indikator bei Erwartungen');
+    if (missing.length) {
+      e.preventDefault();
+      alert('Folgende Angaben fehlen noch:\n' + missing.join('\n'));
+    }
   });
 
   document.querySelectorAll('[id^="priorities-"]').forEach(el => {
