@@ -15,10 +15,17 @@
 
 <button data-modal-target="planningModal" data-modal-toggle="planningModal" class="mb-4 bg-green-500 text-white px-4 py-2 rounded">Neues Tagesziel</button>
 
-<div class="grid gap-4 md:grid-cols-2">
+<style>
+  .timeline-entry {transition: transform 0.3s, opacity 0.3s; opacity:0.6; transform:scale(0.85);}
+  .timeline-entry.active {opacity:1; transform:scale(1);}
+  .timeline-line {position:absolute; left:50%; top:0; bottom:0; width:2px; background:#e5e7eb; transform:translateX(-50%);}  
+</style>
+
+<div id="timeline" class="relative flex flex-col items-center">
+  <div class="timeline-line"></div>
   {% for entry in entries %}
-  <div class="bg-white p-4 rounded shadow">
-    <h4 class="font-semibold">{{ entry.session_date }}</h4>
+  <div class="timeline-entry bg-white p-4 rounded shadow my-8 w-full max-w-xl">
+    <h4 class="font-semibold text-center">{{ entry.session_date }}</h4>
     {% if entry.goals %}
     <p class="mt-2"><span class="font-semibold">Ziele:</span></p>
     <ul class="list-disc list-inside">
@@ -27,7 +34,13 @@
       {% endfor %}
     </ul>
     {% endif %}
-    {% if entry.priorities %}<p><span class="font-semibold">Prioritäten:</span> {{ entry.priorities }}</p>{% endif %}
+    {% if entry.priorities %}
+    <p><span class="font-semibold">Prioritäten:</span>
+      {% for p in entry.priorities %}
+        <span class="{% if p.priority %}underline font-semibold{% endif %}">{{ p.goal }}</span>{% if not forloop.last %} &rarr; {% endif %}
+      {% endfor %}
+    </p>
+    {% endif %}
     {% if entry.strategies %}<p><span class="font-semibold">Strategien:</span> {{ entry.strategies }}</p>{% endif %}
     {% if entry.resources %}<p><span class="font-semibold">Ressourcen:</span> {{ entry.resources }}</p>{% endif %}
     {% if entry.time_planning %}<p><span class="font-semibold">Zeitplanung:</span> {{ entry.time_planning }}</p>{% endif %}
@@ -935,6 +948,30 @@ document.addEventListener('DOMContentLoaded', function() {
     updateHidden();
   });
 
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const entries = document.querySelectorAll('.timeline-entry');
+  function activateEntry() {
+    const middle = window.innerHeight / 2;
+    let closest = null;
+    let minDist = Infinity;
+    entries.forEach(el => {
+      const rect = el.getBoundingClientRect();
+      const center = rect.top + rect.height / 2;
+      const dist = Math.abs(center - middle);
+      if (dist < minDist) {
+        minDist = dist;
+        closest = el;
+      }
+    });
+    entries.forEach(el => el.classList.remove('active'));
+    if (closest) closest.classList.add('active');
+  }
+  window.addEventListener('scroll', activateEntry);
+  activateEntry();
 });
 </script>
 
