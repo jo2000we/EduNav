@@ -2,6 +2,43 @@
 {% load form_tags %}
 
 {% block content %}
+
+<style>
+  .timeline-container { position: relative; }
+  .timeline-container::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #e5e7eb;
+  }
+  .timeline-entry { position: relative; padding-top: 2rem; }
+  .timeline-entry::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 0;
+    transform: translate(-50%, -50%);
+    width: 1rem;
+    height: 1rem;
+    border-radius: 9999px;
+    background: #3b82f6;
+  }
+  .timeline-card { transform-origin: center; }
+  .timeline-card.inactive { opacity: 0.3; transform: scale(0.85); }
+  .timeline-card .details { display: none; }
+  .timeline-card.active .details { display: block; }
+  @keyframes zoomIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .modal-content {
+    animation: zoomIn 0.3s ease;
+  }
+</style>
+
 <h2 class="text-2xl font-bold mb-4">Hallo {{ student.pseudonym }}</h2>
 
 <div class="mb-6 bg-white p-4 rounded shadow">
@@ -15,23 +52,73 @@
 
 <button data-modal-target="planningModal" data-modal-toggle="planningModal" class="mb-4 bg-green-500 text-white px-4 py-2 rounded">Neues Tagesziel</button>
 
-<div class="grid gap-4 md:grid-cols-2">
+<div id="timeline" class="timeline-container space-y-16">
   {% for entry in entries %}
-  <div class="bg-white p-4 rounded shadow">
-    <h4 class="font-semibold">{{ entry.session_date }}</h4>
-    {% if entry.goals %}
-    <p class="mt-2"><span class="font-semibold">Ziele:</span></p>
-    <ul class="list-disc list-inside">
-      {% for g in entry.goals %}
-      <li>{{ g }}</li>
-      {% endfor %}
-    </ul>
-    {% endif %}
-    {% if entry.priorities %}<p><span class="font-semibold">Prioritäten:</span> {{ entry.priorities }}</p>{% endif %}
-    {% if entry.strategies %}<p><span class="font-semibold">Strategien:</span> {{ entry.strategies }}</p>{% endif %}
-    {% if entry.resources %}<p><span class="font-semibold">Ressourcen:</span> {{ entry.resources }}</p>{% endif %}
-    {% if entry.time_planning %}<p><span class="font-semibold">Zeitplanung:</span> {{ entry.time_planning }}</p>{% endif %}
-    {% if entry.expectations %}<p><span class="font-semibold">Erwartungen:</span> {{ entry.expectations }}</p>{% endif %}
+  <div class="timeline-entry" data-entry="{{ entry.id }}">
+    <div class="timeline-card inactive bg-white p-6 rounded shadow mx-auto w-full max-w-xl">
+      <div class="summary text-center">
+        <h4 class="font-semibold">{{ entry.session_date }}</h4>
+        {% if entry.goals %}<p class="text-sm text-gray-500 mt-1">{{ entry.goals|first }}</p>{% endif %}
+      </div>
+      <div class="details mt-4 space-y-2">
+        {% if entry.goals %}
+        <div>
+          <div class="flex items-center text-blue-600 mb-1">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 3a1 1 0 011 1v4l3 3a1 1 0 01-1.414 1.414l-3.293-3.293A1 1 0 019 10V6a1 1 0 011-1z"/></svg>
+            <span class="font-semibold ml-1">Ziele</span>
+          </div>
+          <ul class="list-disc ml-6">
+            {% for g in entry.goals %}
+            <li>{{ g }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+        {% if entry.priorities %}
+        <div>
+          <div class="flex items-center text-red-600 mb-1">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2l2.39 4.84 5.34.78-3.87 3.77.91 5.31L10 14.77 4.23 16.7l.91-5.31L1.27 7.62l5.34-.78L10 2z"/></svg>
+            <span class="font-semibold ml-1">Prioritäten</span>
+          </div>
+          <p id="priorities-{{ entry.id }}"></p>
+        </div>
+        {% endif %}
+        {% if entry.strategies %}
+        <div>
+          <div class="flex items-center text-purple-600 mb-1">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1.586a1 1 0 01-.293.707L5.414 8.586A2 2 0 005 10v4a2 2 0 002 2h1v2a1 1 0 001.447.894L13 17h2a2 2 0 002-2v-3.586a1 1 0 00-.293-.707l-5-5A1 1 0 0111 4.586V3z"/></svg>
+            <span class="font-semibold ml-1">Strategien</span>
+          </div>
+          <ul id="strategies-{{ entry.id }}" class="list-disc ml-6"></ul>
+        </div>
+        {% endif %}
+        {% if entry.resources %}
+        <div>
+          <div class="flex items-center text-green-600 mb-1">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M4 2a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2H4zm2 4h8v2H6V6zm0 4h8v2H6v-2z"/></svg>
+            <span class="font-semibold ml-1">Ressourcen</span>
+          </div>
+          <div id="resources-{{ entry.id }}" class="flex flex-wrap gap-2"></div>
+        </div>
+        {% endif %}
+        {% if entry.time_planning %}
+        <div>
+          <div class="flex items-center text-yellow-600 mb-1">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 4a1 1 0 10-2 0v4a1 1 0 00.293.707l3 3a1 1 0 001.414-1.414L11 9.586V6z"/></svg>
+            <span class="font-semibold ml-1">Zeitplanung</span>
+          </div>
+          <div id="timeplan-{{ entry.id }}"></div>
+        </div>
+        {% endif %}
+        {% if entry.expectations %}
+        <div>
+          <div class="flex items-center text-gray-600 mb-1">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm2 3h8v2H6V6zm0 4h5v2H6v-2z"/></svg>
+            <span class="font-semibold ml-1">Erwartungen</span>
+          </div>
+          <div id="expect-{{ entry.id }}"></div>
+        </div>
+        {% endif %}
 
     {% if entry.steps %}
       <hr class="my-2">
@@ -93,18 +180,19 @@
           {% if entry.motivation_rating %}<p>Motivation: {{ entry.motivation_rating }}</p>{% endif %}
           {% if entry.motivation_improve %}<p>Stärken: {{ entry.motivation_improve }}</p>{% endif %}
         {% endif %}
-        {% if entry.next_phase or entry.strategy_outlook %}
+      {% if entry.next_phase or entry.strategy_outlook %}
           <p><span class="font-semibold">Ausblick:</span></p>
           {% if entry.next_phase %}<p>Nächste Phase: {{ entry.next_phase }}</p>{% endif %}
           {% if entry.strategy_outlook %}<p>Strategien: {{ entry.strategy_outlook }}</p>{% endif %}
         {% endif %}
       {% endif %}
+    </div>
   </div>
 
   <!-- Execution Modal -->
   <div id="executionModal-{{ entry.id }}" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
     <div class="relative p-4 w-full max-w-2xl max-h-full">
-      <div class="relative bg-white rounded-lg shadow">
+      <div class="relative bg-white rounded-lg shadow modal-content">
         <div class="p-4">
           <h3 class="text-lg font-semibold mb-4">Durchführung</h3>
           <form method="post" action="{% url 'student_entry_execution' entry.id %}" id="execution-form-{{ entry.id }}">
@@ -159,8 +247,8 @@
 
   <!-- Unplanned Activity Modal -->
   <div id="unplannedModal-{{ entry.id }}" class="hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-center w-full h-full bg-black bg-opacity-50">
-    <div class="bg-white p-4 rounded shadow w-full max-w-md">
-      <h3 class="text-lg font-semibold mb-4">Ein Ziel mit dem sich beschäftigt wurde, das jedoch nicht geplant war, hinzufügen</h3>
+      <div class="bg-white p-4 rounded shadow w-full max-w-md modal-content">
+        <h3 class="text-lg font-semibold mb-4">Ein Ziel mit dem sich beschäftigt wurde, das jedoch nicht geplant war, hinzufügen</h3>
       <input type="text" id="unplanned-input-{{ entry.id }}" class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5">
       <div class="mt-4 text-right">
         <button type="button" id="unplanned-save-{{ entry.id }}" class="bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
@@ -169,24 +257,27 @@
   </div>
 
   {% with eid=entry.id|stringformat:'s' %}
-    {% with gid='goals-data-'|add:eid tid='time-data-'|add:eid sid='strategies-data-'|add:eid sd='steps-data-'|add:eid tu='time-usage-data-'|add:eid sc='strategy-check-data-'|add:eid pd='problems-data-'|add:eid ed='emotions-data-'|add:eid ga='goal-achievement-data-'|add:eid se='strategy-evaluation-data-'|add:eid %}
-      {{ entry.goals|json_script:gid }}
-      {{ entry.time_planning|json_script:tid }}
-      {{ entry.strategies|json_script:sid }}
-      {{ entry.steps|json_script:sd }}
-      {{ entry.time_usage|json_script:tu }}
-      {{ entry.strategy_check|json_script:sc }}
-      {{ entry.problems|json_script:pd }}
-      {{ entry.emotions|json_script:ed }}
-      {{ entry.goal_achievement|json_script:ga }}
-      {{ entry.strategy_evaluation|json_script:se }}
+    {% with gid='goals-data-'|add:eid tid='time-data-'|add:eid sid='strategies-data-'|add:eid pr='priorities-data-'|add:eid rid='resources-data-'|add:eid ex='expect-data-'|add:eid sd='steps-data-'|add:eid tu='time-usage-data-'|add:eid sc='strategy-check-data-'|add:eid pd='problems-data-'|add:eid ed='emotions-data-'|add:eid ga='goal-achievement-data-'|add:eid se='strategy-evaluation-data-'|add:eid %}
+        {{ entry.goals|json_script:gid }}
+        {{ entry.time_planning|json_script:tid }}
+        {{ entry.strategies|json_script:sid }}
+        {{ entry.priorities|json_script:pr }}
+        {{ entry.resources|json_script:rid }}
+        {{ entry.expectations|json_script:ex }}
+        {{ entry.steps|json_script:sd }}
+        {{ entry.time_usage|json_script:tu }}
+        {{ entry.strategy_check|json_script:sc }}
+        {{ entry.problems|json_script:pd }}
+        {{ entry.emotions|json_script:ed }}
+        {{ entry.goal_achievement|json_script:ga }}
+        {{ entry.strategy_evaluation|json_script:se }}
     {% endwith %}
   {% endwith %}
 
   <!-- Reflection Modal -->
   <div id="reflectionModal-{{ entry.id }}" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 left-0 right-0 z-50 flex justify-center items-center w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
     <div class="relative w-full max-w-4xl max-h-full">
-      <div class="relative bg-white rounded-lg shadow">
+      <div class="relative bg-white rounded-lg shadow modal-content">
         <div class="p-6">
           <h3 class="text-lg font-semibold mb-4">Reflexion</h3>
           <form method="post" action="{% url 'student_entry_reflection' entry.id %}" id="reflection-form-{{ entry.id }}">
@@ -297,7 +388,7 @@
 <!-- Planning Modal -->
 <div id="planningModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
   <div class="relative p-4 w-full max-w-2xl max-h-full">
-    <div class="relative bg-white rounded-lg shadow">
+    <div class="relative bg-white rounded-lg shadow modal-content">
       <div class="p-4">
         <h3 class="text-lg font-semibold mb-4">Tagesplanung</h3>
         <form method="post" action="{% url 'student_entry_create' %}" id="planning-form">
@@ -357,7 +448,7 @@
 
 <!-- Goal Modal -->
 <div id="goalModal" class="hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-center w-full h-full bg-black bg-opacity-50">
-  <div class="bg-white p-4 rounded shadow w-full max-w-md">
+  <div class="bg-white p-4 rounded shadow w-full max-w-md modal-content">
     <h3 class="text-lg font-semibold mb-4">Ein Ziel festlegen</h3>
     <input type="text" id="goal-input" class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5">
     <div class="mt-4 text-right">
@@ -368,7 +459,7 @@
 
 <!-- Strategy Modal -->
 <div id="strategyModal" class="hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-center w-full h-full bg-black bg-opacity-50">
-  <div class="bg-white p-4 rounded shadow w-full max-w-md">
+  <div class="bg-white p-4 rounded shadow w-full max-w-md modal-content">
     <h3 class="text-lg font-semibold mb-4">Vorgehen/Strategie hinzufügen</h3>
     <input type="text" id="strategy-input" class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5">
     <div class="mt-4 text-right">
@@ -379,7 +470,7 @@
 
 <!-- Resource Modal -->
 <div id="resourceModal" class="hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-center w-full h-full bg-black bg-opacity-50">
-  <div class="bg-white p-4 rounded shadow w-full max-w-md">
+  <div class="bg-white p-4 rounded shadow w-full max-w-md modal-content">
     <h3 class="text-lg font-semibold mb-4">Ressource hinzufügen</h3>
     <input type="text" id="resource-input" class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5">
     <div class="mt-4 text-right">
@@ -389,6 +480,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
 <script>
 function parseData(elId) {
   const el = document.getElementById(elId);
@@ -934,6 +1027,104 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('planning-form').addEventListener('submit', () => {
     updateHidden();
   });
+
+  function renderList(elId, data) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (Array.isArray(data)) {
+      el.innerHTML = data.map(item => '<li>' + item + '</li>').join('');
+    }
+  }
+
+  function renderTags(elId, data) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (Array.isArray(data)) {
+      el.innerHTML = data.map(item => '<span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">' + item + '</span>').join(' ');
+    }
+  }
+
+  function renderTime(elId, data) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (Array.isArray(data)) {
+      el.innerHTML = '<ul class="list-disc ml-6">' + data.map(item => {
+        if (typeof item === 'object') {
+          const parts = [];
+          if (item.goal) parts.push(item.goal);
+          if (item.time || item.duration) parts.push(item.time || item.duration);
+          return '<li>' + parts.join(' - ') + '</li>';
+        }
+        return '<li>' + item + '</li>';
+      }).join('') + '</ul>';
+    } else if (data) {
+      el.textContent = data;
+    }
+  }
+
+  document.querySelectorAll('[id^="priorities-"]').forEach(el => {
+    const id = el.id.split('-')[1];
+    const data = parseData('priorities-data-' + id) || [];
+    if (data.length) {
+      el.innerHTML = data.map(p => p.priority ? '<span class="underline">' + p.goal + '</span>' : p.goal).join(' &rarr; ');
+    }
+  });
+
+  document.querySelectorAll('[id^="strategies-"]').forEach(el => {
+    const id = el.id.split('-')[1];
+    renderList(el.id, parseData('strategies-data-' + id) || []);
+  });
+
+  document.querySelectorAll('[id^="resources-"]').forEach(el => {
+    const id = el.id.split('-')[1];
+    renderTags(el.id, parseData('resources-data-' + id) || []);
+  });
+
+  document.querySelectorAll('[id^="timeplan-"]').forEach(el => {
+    const id = el.id.split('-')[1];
+    renderTime(el.id, parseData('time-data-' + id) || []);
+  });
+
+  document.querySelectorAll('[id^="expect-"]').forEach(el => {
+    const id = el.id.split('-')[1];
+    const data = parseData('expect-data-' + id);
+    if (Array.isArray(data)) {
+      el.innerHTML = data.join(', ');
+    } else if (data) {
+      el.textContent = data;
+    }
+  });
+
+  gsap.registerPlugin(ScrollTrigger);
+  gsap.utils.toArray('.timeline-card').forEach(card => {
+    gsap.from(card, {opacity:0, y:50, duration:0.5, scrollTrigger:{trigger:card, start:"top 80%"}});
+  });
+
+  const cards = gsap.utils.toArray('.timeline-card');
+  function updateActive() {
+    const center = window.innerHeight / 2;
+    let closest = null;
+    cards.forEach(card => {
+      const rect = card.parentElement.getBoundingClientRect();
+      const dist = Math.abs(rect.top + rect.height / 2 - center);
+      if (!closest || dist < closest.dist) closest = {card, dist};
+    });
+    cards.forEach(card => {
+      if (card === closest.card) {
+        card.classList.add('active');
+        card.classList.remove('inactive');
+        gsap.to(card, {scale:1, opacity:1, duration:0.3});
+      } else {
+        card.classList.remove('active');
+        card.classList.add('inactive');
+        gsap.to(card, {scale:0.85, opacity:0.3, duration:0.3});
+      }
+    });
+  }
+
+  updateActive();
+  window.addEventListener('scroll', updateActive);
+  window.addEventListener('resize', updateActive);
 
 });
 </script>
