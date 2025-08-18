@@ -26,6 +26,11 @@ urlpatterns = [
         name="class_overall_goal",
     ),
     path(
+        "classrooms/<int:classroom_id>/entry-limits/",
+        views.set_class_entry_limits,
+        name="class_entry_limits",
+    ),
+    path(
         "classrooms/<int:classroom_id>/export/",
         export_views.export_classroom_data,
         name="classroom_export",

@@ -106,6 +106,24 @@ class ClassOverallGoalForm(forms.Form):
     )
 
 
+class ClassEntryLimitForm(forms.ModelForm):
+    class Meta:
+        model = Classroom
+        fields = ["max_entries_per_day", "max_entries_per_week"]
+        widgets = {
+            "max_entries_per_day": forms.Select(
+                attrs={
+                    "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
+                }
+            ),
+            "max_entries_per_week": forms.Select(
+                attrs={
+                    "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
+                }
+            ),
+        }
+
+
 import json
 
 
