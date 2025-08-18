@@ -55,6 +55,10 @@
     padding-bottom: 0;
   }
   .timeline-entry.overall-goal { padding-top: 0; }
+  .timeline-entry.overall-goal::before,
+  .timeline-button::before {
+    display: none;
+  }
 </style>
 
 <div id="timeline" class="timeline-container space-y-16 -mt-4">
@@ -915,8 +919,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // GSAP animations for timeline and modals
   if (window.gsap) {
-    const entries = gsap.utils.toArray('.timeline-entry');
-    let activeEntry = entries[0] || null;
+    const entries = gsap
+      .utils
+      .toArray('.timeline-entry')
+      .filter(e => !e.classList.contains('overall-goal'));
+    const overallGoal = document.querySelector('.timeline-entry.overall-goal');
+    let activeEntry = overallGoal || entries[0] || null;
     if (activeEntry) {
       setActive(activeEntry);
     }
@@ -947,16 +955,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updateActive() {
+      if (overallGoal && window.scrollY <= 5) {
+        if (activeEntry !== overallGoal) {
+          activeEntry = overallGoal;
+          setActive(activeEntry);
+        }
+        return;
+      }
+
       const viewportCenter = window.innerHeight / 2;
-      let closest = activeEntry;
-      let closestDist = activeEntry
-        ? Math.abs(activeEntry.getBoundingClientRect().top + activeEntry.getBoundingClientRect().height / 2 - viewportCenter)
+      let closest = activeEntry && activeEntry !== overallGoal ? activeEntry : entries[0];
+      let closestDist = closest
+        ? Math.abs(closest.getBoundingClientRect().top + closest.getBoundingClientRect().height / 2 - viewportCenter)
         : Infinity;
       entries.forEach(entry => {
         const rect = entry.getBoundingClientRect();
         const entryCenter = rect.top + rect.height / 2;
         const dist = Math.abs(entryCenter - viewportCenter);
-        if (dist < closestDist - 20) { // small threshold for "sticky" behaviour
+        if (dist < closestDist - 20) {
           closestDist = dist;
           closest = entry;
         }
