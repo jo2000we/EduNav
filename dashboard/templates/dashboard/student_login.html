@@ -3,10 +3,11 @@
 {% block content %}
 <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow">
   <h2 class="text-xl font-bold mb-4">Schüler Login</h2>
-  <form method="post">
+  <form hx-post="{% url 'student_login_step' %}" hx-target="#password-section" hx-swap="innerHTML" method="post">
     {% csrf_token %}
     {{ form.pseudonym }}
-    <button type="submit" class="mt-4 w-full bg-blue-500 text-white py-2 rounded">Login</button>
+    <button type="submit" class="mt-4 w-full bg-blue-500 text-white py-2 rounded">Weiter</button>
   </form>
+  <div id="password-section" class="mt-4"></div>
 </div>
 {% endblock %}

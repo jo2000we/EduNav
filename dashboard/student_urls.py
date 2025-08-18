@@ -3,6 +3,7 @@ from . import student_views
 
 urlpatterns = [
     path("login/", student_views.student_login, name="student_login"),
+    path("login/step/", student_views.student_login_step, name="student_login_step"),
     path("logout/", student_views.student_logout, name="student_logout"),
     path("dashboard/", student_views.student_dashboard, name="student_dashboard"),
     path("entry/new/", student_views.create_entry, name="student_entry_create"),

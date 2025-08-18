@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import User
+from django.contrib.auth.hashers import make_password, check_password as auth_check_password
 from datetime import timedelta
 
 
@@ -42,6 +43,7 @@ class Student(models.Model):
 
     pseudonym = models.CharField(max_length=50)
     login_code = models.CharField(max_length=20, blank=True)
+    password = models.CharField(max_length=128, blank=True, default="")
     overall_goal = models.TextField(blank=True, null=True)
     overall_goal_due_date = models.DateField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -52,6 +54,18 @@ class Student(models.Model):
 
     def __str__(self):
         return f"{self.pseudonym} ({self.classroom.name})"
+
+    def set_password(self, raw_password: str):
+        if raw_password:
+            self.password = make_password(raw_password)
+        else:
+            self.password = ""
+        self.save(update_fields=["password"])
+
+    def check_password(self, raw_password: str) -> bool:
+        if not self.password:
+            return False
+        return auth_check_password(raw_password, self.password)
 
     def can_create_entry(self):
         today = timezone.now().date()
