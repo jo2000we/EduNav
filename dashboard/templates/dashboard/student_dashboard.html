@@ -4,7 +4,7 @@
 {% block content %}
 
 <style>
-  .timeline-container { position: relative; }
+  .timeline-container { position: relative; padding-bottom: 50vh; }
   .timeline-container::before {
     content: "";
     position: absolute;
@@ -58,165 +58,186 @@
 <div id="timeline" class="timeline-container space-y-16">
   {% for entry in entries %}
   <div class="timeline-entry" data-entry="{{ entry.id }}">
-    <div class="timeline-card inactive bg-white p-6 rounded-lg shadow mx-auto w-full max-w-xl">
+    <div class="timeline-card inactive bg-white p-6 rounded-lg shadow mx-auto w-full max-w-3xl">
       <h4 class="font-bold text-center text-lg">{{ entry.session_date }}</h4>
-      <h5 class="font-semibold mt-4 mb-2">Planung</h5>
-
-      {% if entry.goals %}
-      <div class="mt-4">
-        <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>Ziele</p>
-        <ul class="mt-1 space-y-1">
+      <div class="preview-view">
+        {% if entry.goals %}
+        <ul class="mt-2 text-sm space-y-1">
           {% for g in entry.goals %}
-          <li class="flex items-start"><svg class="w-3 h-3 mr-2 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4"/></svg><span>{{ g }}</span></li>
-          {% endfor %}
-        </ul>
-      </div>
-      {% endif %}
-
-      {% if entry.priorities %}
-      <div class="mt-4">
-        <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5-5 5M6 7l5 5-5 5"/></svg>Prioritäten</p>
-        <p id="priorities-{{ entry.id }}" class="mt-1 text-sm"></p>
-      </div>
-      {% endif %}
-
-      {% if entry.strategies %}
-      <div class="mt-4">
-        <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a7 7 0 00-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 002 2h4a2 2 0 002-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 00-7-7z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 21h6"/></svg>Strategien</p>
-        <div class="flex flex-wrap gap-2 mt-1">
-          {% for s in entry.strategies %}
-          <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">{{ s }}</span>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-
-      {% if entry.resources %}
-      <div class="mt-4">
-        <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12l4-4m-4 4l4 4"/></svg>Ressourcen</p>
-        <div class="flex flex-wrap gap-2 mt-1">
-          {% for r in entry.resources %}
-          <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">{{ r }}</span>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-
-      {% if entry.time_planning %}
-      <div class="mt-4">
-        <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3"/></svg>Zeitplanung</p>
-        <ul class="mt-1 space-y-1 text-sm">
-          {% for t in entry.time_planning %}
-          <li class="flex justify-between bg-gray-50 px-2 py-1 rounded"><span>{{ t.goal }}</span><span class="text-gray-600">{{ t.time }}</span></li>
-          {% endfor %}
-        </ul>
-      </div>
-      {% endif %}
-
-      {% if entry.expectations %}
-      <div class="mt-4">
-        <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>Erwartungen</p>
-        <ul class="mt-1 space-y-1 text-sm">
-          {% for e in entry.expectations %}
-          <li class="flex items-start"><svg class="w-3 h-3 mr-2 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4"/></svg><span>{{ e.goal }}{% if e.indicator %}: {{ e.indicator }}{% endif %}</span></li>
-          {% endfor %}
-        </ul>
-      </div>
-      {% endif %}
-
-      {% if entry.steps %}
-      <div class="mt-6 border-t pt-4">
-        <h5 class="font-semibold mb-2">Durchführung</h5>
-        <ul class="space-y-1 text-sm">
-          {% for s in entry.steps %}
-          <li class="flex items-start"><svg class="w-4 h-4 mr-2 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>{{ s }}</span></li>
-          {% endfor %}
-        </ul>
-        {% if entry.time_usage %}
-        <p class="font-semibold mt-4">Zeitnutzung</p>
-        <ul class="mt-1 space-y-1 text-sm">
-          {% for t in entry.time_usage %}
-          <li class="flex justify-between bg-gray-50 px-2 py-1 rounded"><span>{{ t.goal }}</span><span class="text-gray-600">{{ t.time }}</span></li>
+          <li class="flex items-center justify-center">
+            <span>{{ g }}</span>
+            {% if entry.goal_achievement %}
+              {% for ga in entry.goal_achievement %}
+                {% if ga.goal == g %}
+                <svg class="w-4 h-4 text-green-500 ml-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          </li>
           {% endfor %}
         </ul>
         {% endif %}
-        {% if entry.strategy_check %}
-        <p class="font-semibold mt-4">Strategiecheck</p>
-        <ul class="mt-1 space-y-1 text-sm list-disc list-inside">
-          {% for sc in entry.strategy_check %}
-          <li>{{ sc.strategy }}{% if sc.used is not None %} – {{ sc.used|yesno:"genutzt,nicht genutzt" }}{% endif %}{% if sc.useful is not None %}, {{ sc.useful|yesno:"sinnvoll,nicht sinnvoll" }}{% endif %}{% if sc.adaptation %} – {{ sc.adaptation }}{% endif %}</li>
-          {% endfor %}
-        </ul>
-        {% endif %}
-        {% if entry.problems %}<p class="mt-4"><span class="font-semibold">Probleme:</span> {{ entry.problems }}</p>{% endif %}
-        {% if entry.emotions %}<p class="mt-2"><span class="font-semibold">Emotionen:</span> {{ entry.emotions }}</p>{% endif %}
       </div>
-      {% endif %}
-
-      {% if not entry.goal_achievement %}
-      <div class="mt-6 flex flex-wrap gap-2 justify-center">
-        <button data-modal-target="executionModal-{{ entry.id }}" onclick="setupExecutionModal({{ entry.id }})" class="bg-blue-500 text-white px-3 py-1 rounded">Durchführung protokollieren</button>
-        <button onclick="finalizeExecution({{ entry.id }})" class="bg-red-500 text-white px-3 py-1 rounded">Durchführung abschließen und reflektieren</button>
+      <div class="full-view hidden mt-4">
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <h5 class="font-semibold mb-2 text-center">Planung</h5>
+            {% if entry.goals %}
+            <div class="mt-4">
+              <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>Ziele</p>
+              <ul class="mt-1 space-y-1">
+                {% for g in entry.goals %}
+                <li class="flex items-start"><svg class="w-3 h-3 mr-2 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4"/></svg><span>{{ g }}</span></li>
+                {% endfor %}
+              </ul>
+            </div>
+            {% endif %}
+            {% if entry.priorities %}
+            <div class="mt-4">
+              <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5-5 5M6 7l5 5-5 5"/></svg>Prioritäten</p>
+              <p id="priorities-{{ entry.id }}" class="mt-1 text-sm"></p>
+            </div>
+            {% endif %}
+            {% if entry.strategies %}
+            <div class="mt-4">
+              <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a7 7 0 00-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 002 2h4a2 2 0 002-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 00-7-7z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 21h6"/></svg>Strategien</p>
+              <div class="flex flex-wrap gap-2 mt-1">
+                {% for s in entry.strategies %}
+                <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">{{ s }}</span>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+            {% if entry.resources %}
+            <div class="mt-4">
+              <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12l4-4m-4 4l4 4"/></svg>Ressourcen</p>
+              <div class="flex flex-wrap gap-2 mt-1">
+                {% for r in entry.resources %}
+                <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">{{ r }}</span>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+            {% if entry.time_planning %}
+            <div class="mt-4">
+              <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3"/></svg>Zeitplanung</p>
+              <ul class="mt-1 space-y-1 text-sm">
+                {% for t in entry.time_planning %}
+                <li class="flex justify-between bg-gray-50 px-2 py-1 rounded"><span>{{ t.goal }}</span><span class="text-gray-600">{{ t.time }}</span></li>
+                {% endfor %}
+              </ul>
+            </div>
+            {% endif %}
+            {% if entry.expectations %}
+            <div class="mt-4">
+              <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>Erwartungen</p>
+              <ul class="mt-1 space-y-1 text-sm">
+                {% for e in entry.expectations %}
+                <li class="flex items-start"><svg class="w-3 h-3 mr-2 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4"/></svg><span>{{ e.goal }}{% if e.indicator %}: {{ e.indicator }}{% endif %}</span></li>
+                {% endfor %}
+              </ul>
+            </div>
+            {% endif %}
+          </div>
+          <div>
+            <h5 class="font-semibold mb-2 text-center">Durchführung</h5>
+            {% if entry.steps %}
+            <ul class="space-y-1 text-sm">
+              {% for s in entry.steps %}
+              <li class="flex items-start"><svg class="w-4 h-4 mr-2 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>{{ s }}</span></li>
+              {% endfor %}
+            </ul>
+            {% if entry.time_usage %}
+            <p class="font-semibold mt-4">Zeitnutzung</p>
+            <ul class="mt-1 space-y-1 text-sm">
+              {% for t in entry.time_usage %}
+              <li class="flex justify-between bg-gray-50 px-2 py-1 rounded"><span>{{ t.goal }}</span><span class="text-gray-600">{{ t.time }}</span></li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+            {% if entry.strategy_check %}
+            <p class="font-semibold mt-4">Strategiecheck</p>
+            <ul class="mt-1 space-y-1 text-sm list-disc list-inside">
+              {% for sc in entry.strategy_check %}
+              <li>{{ sc.strategy }}{% if sc.used is not None %} – {{ sc.used|yesno:"genutzt,nicht genutzt" }}{% endif %}{% if sc.useful is not None %}, {{ sc.useful|yesno:"sinnvoll,nicht sinnvoll" }}{% endif %}{% if sc.adaptation %} – {{ sc.adaptation }}{% endif %}</li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+            {% if entry.problems %}<p class="mt-4"><span class="font-semibold">Probleme:</span> {{ entry.problems }}</p>{% endif %}
+            {% if entry.emotions %}<p class="mt-2"><span class="font-semibold">Emotionen:</span> {{ entry.emotions }}</p>{% endif %}
+            <div class="mt-4 text-right">
+              <button data-modal-target="executionModal-{{ entry.id }}" onclick="setupExecutionModal({{ entry.id }})" class="bg-blue-500 text-white px-3 py-1 rounded">Aktualisieren</button>
+            </div>
+            {% else %}
+            <div class="flex items-center justify-center h-full">
+              <button data-modal-target="executionModal-{{ entry.id }}" onclick="setupExecutionModal({{ entry.id }})" class="bg-blue-500 text-white rounded-full px-4 py-2">Durchführung protokollieren</button>
+            </div>
+            {% endif %}
+          </div>
+          <div>
+            <h5 class="font-semibold mb-2 text-center">Reflexion</h5>
+            {% if entry.goal_achievement %}
+            <div class="mt-4">
+              <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>Zielerreichung</p>
+              <ul class="mt-1 space-y-1 text-sm">
+                {% for ga in entry.goal_achievement %}
+                <li class="flex items-start"><svg class="w-4 h-4 mr-2 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>{{ ga.goal }}: {{ ga.achievement }}{% if ga.comment %} – {{ ga.comment }}{% endif %}</span></li>
+                {% endfor %}
+              </ul>
+            </div>
+            {% if entry.strategy_evaluation %}
+            <div class="mt-4">
+              <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a7 7 0 00-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 002 2h4a2 2 0 002-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 00-7-7z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 21h6"/></svg>Strategie</p>
+              <ul class="mt-1 space-y-1 text-sm">
+                {% for se in entry.strategy_evaluation %}
+                <li class="flex items-start"><svg class="w-4 h-4 mr-2 text-purple-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a7 7 0 00-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 002 2h4a2 2 0 002-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 00-7-7z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 21h6"/></svg><span>{{ se.strategy }}: {{ se.helpful }}{% if se.reason %} – {{ se.reason }}{% endif %} (erneut: {{ se.reuse }})</span></li>
+                {% endfor %}
+              </ul>
+            </div>
+            {% endif %}
+            {% if entry.learned_subject or entry.learned_work %}
+            <div class="mt-4">
+              <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 14l6.16-3.422A12.083 12.083 0 0118 20.944V21l-6-3-6 3v-.056a12.083 12.083 0 01-.16-10.367L12 14z"/></svg>Selbsteinschätzung</p>
+              {% if entry.learned_subject %}<p class="mt-1 text-sm">Fachlich: {{ entry.learned_subject }}</p>{% endif %}
+              {% if entry.learned_work %}<p class="mt-1 text-sm">Arbeitsweise: {{ entry.learned_work }}</p>{% endif %}
+            </div>
+            {% endif %}
+            {% if entry.planning_realistic or entry.planning_deviations %}
+            <div class="mt-4">
+              <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3"/></svg>Zeitmanagement</p>
+              {% if entry.planning_realistic %}<p class="mt-1 text-sm">Planung realistisch: {{ entry.planning_realistic }}</p>{% endif %}
+              {% if entry.planning_deviations %}<p class="mt-1 text-sm">Abweichungen: {{ entry.planning_deviations }}</p>{% endif %}
+            </div>
+            {% endif %}
+            {% if entry.motivation_rating or entry.motivation_improve %}
+            <div class="mt-4">
+              <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1 text-red-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 3.99 4 6.5 4c1.74 0 3.41 1.01 4.13 2.44h.74C13.09 5.01 14.76 4 16.5 4 19.01 4 21 6 21 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>Emotionen/Motivation</p>
+              {% if entry.motivation_rating %}<p class="mt-1 text-sm">Motivation: {{ entry.motivation_rating }}</p>{% endif %}
+              {% if entry.motivation_improve %}<p class="mt-1 text-sm">Stärken: {{ entry.motivation_improve }}</p>{% endif %}
+            </div>
+            {% endif %}
+            {% if entry.next_phase or entry.strategy_outlook %}
+            <div class="mt-4">
+              <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5-5 5M6 7l5 5-5 5"/></svg>Ausblick</p>
+              {% if entry.next_phase %}<p class="mt-1 text-sm">Nächste Phase: {{ entry.next_phase }}</p>{% endif %}
+              {% if entry.strategy_outlook %}<p class="mt-1 text-sm">Strategien: {{ entry.strategy_outlook }}</p>{% endif %}
+            </div>
+            {% endif %}
+            {% else %}
+            {% if entry.steps and entry.time_usage and entry.emotions %}
+            <div class="flex items-center justify-center h-full">
+              <button onclick="finalizeExecution({{ entry.id }})" class="bg-red-500 text-white rounded-full px-4 py-2">Reflexion starten</button>
+            </div>
+            {% else %}
+            <div class="flex flex-col items-center justify-center h-full text-center space-y-2">
+              <button disabled class="bg-gray-300 text-white rounded-full px-4 py-2 cursor-not-allowed">Reflexion starten</button>
+              <p class="text-sm text-gray-500">Die Reflexion kann erst nach der Durchführung gestartet werden.</p>
+            </div>
+            {% endif %}
+            {% endif %}
+          </div>
+        </div>
       </div>
-      {% endif %}
-
-      {% if entry.goal_achievement %}
-      <div class="mt-6 border-t pt-4">
-        <h5 class="font-semibold mb-2">Reflexion</h5>
-
-        <div class="mt-4">
-          <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>Zielerreichung</p>
-          <ul class="mt-1 space-y-1 text-sm">
-            {% for ga in entry.goal_achievement %}
-            <li class="flex items-start"><svg class="w-4 h-4 mr-2 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>{{ ga.goal }}: {{ ga.achievement }}{% if ga.comment %} – {{ ga.comment }}{% endif %}</span></li>
-            {% endfor %}
-          </ul>
-        </div>
-
-        {% if entry.strategy_evaluation %}
-        <div class="mt-4">
-          <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a7 7 0 00-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 002 2h4a2 2 0 002-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 00-7-7z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 21h6"/></svg>Strategie</p>
-          <ul class="mt-1 space-y-1 text-sm">
-            {% for se in entry.strategy_evaluation %}
-            <li class="flex items-start"><svg class="w-4 h-4 mr-2 text-purple-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a7 7 0 00-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 002 2h4a2 2 0 002-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 00-7-7z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 21h6"/></svg><span>{{ se.strategy }}: {{ se.helpful }}{% if se.reason %} – {{ se.reason }}{% endif %} (erneut: {{ se.reuse }})</span></li>
-            {% endfor %}
-          </ul>
-        </div>
-        {% endif %}
-
-        {% if entry.learned_subject or entry.learned_work %}
-        <div class="mt-4">
-          <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 14l6.16-3.422A12.083 12.083 0 0118 20.944V21l-6-3-6 3v-.056a12.083 12.083 0 01-.16-10.367L12 14z"/></svg>Selbsteinschätzung</p>
-          {% if entry.learned_subject %}<p class="mt-1 text-sm">Fachlich: {{ entry.learned_subject }}</p>{% endif %}
-          {% if entry.learned_work %}<p class="mt-1 text-sm">Arbeitsweise: {{ entry.learned_work }}</p>{% endif %}
-        </div>
-        {% endif %}
-
-        {% if entry.planning_realistic or entry.planning_deviations %}
-        <div class="mt-4">
-          <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3"/></svg>Zeitmanagement</p>
-          {% if entry.planning_realistic %}<p class="mt-1 text-sm">Planung realistisch: {{ entry.planning_realistic }}</p>{% endif %}
-          {% if entry.planning_deviations %}<p class="mt-1 text-sm">Abweichungen: {{ entry.planning_deviations }}</p>{% endif %}
-        </div>
-        {% endif %}
-
-        {% if entry.motivation_rating or entry.motivation_improve %}
-        <div class="mt-4">
-          <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1 text-red-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 3.99 4 6.5 4c1.74 0 3.41 1.01 4.13 2.44h.74C13.09 5.01 14.76 4 16.5 4 19.01 4 21 6 21 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>Emotionen/Motivation</p>
-          {% if entry.motivation_rating %}<p class="mt-1 text-sm">Motivation: {{ entry.motivation_rating }}</p>{% endif %}
-          {% if entry.motivation_improve %}<p class="mt-1 text-sm">Stärken: {{ entry.motivation_improve }}</p>{% endif %}
-        </div>
-        {% endif %}
-
-        {% if entry.next_phase or entry.strategy_outlook %}
-        <div class="mt-4">
-          <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5-5 5M6 7l5 5-5 5"/></svg>Ausblick</p>
-          {% if entry.next_phase %}<p class="mt-1 text-sm">Nächste Phase: {{ entry.next_phase }}</p>{% endif %}
-          {% if entry.strategy_outlook %}<p class="mt-1 text-sm">Strategien: {{ entry.strategy_outlook }}</p>{% endif %}
-        </div>
-        {% endif %}
-      </div>
-      {% endif %}
     </div>
   </div>
 
@@ -874,24 +895,49 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // GSAP animations for timeline and modals
   if (window.gsap) {
-    gsap.registerPlugin(ScrollTrigger);
-    gsap.utils.toArray('.timeline-entry').forEach(entry => {
-      ScrollTrigger.create({
-        trigger: entry,
-        start: 'top center',
-        end: 'bottom center',
-        onEnter: () => setActive(entry),
-        onEnterBack: () => setActive(entry)
-      });
-    });
+    const entries = gsap.utils.toArray('.timeline-entry');
+    let activeEntry = entries[0];
 
     function setActive(entry) {
       document.querySelectorAll('.timeline-card').forEach(card => {
         gsap.to(card, { scale: 0.9, opacity: 0.4, duration: 0.3 });
+        card.classList.add('inactive');
+        const prev = card.querySelector('.preview-view');
+        const full = card.querySelector('.full-view');
+        if (prev) prev.classList.remove('hidden');
+        if (full) full.classList.add('hidden');
       });
-      gsap.to(entry.querySelector('.timeline-card'), { scale: 1, opacity: 1, duration: 0.3 });
+      const activeCard = entry.querySelector('.timeline-card');
+      gsap.to(activeCard, { scale: 1, opacity: 1, duration: 0.3 });
+      activeCard.classList.remove('inactive');
+      const prev = activeCard.querySelector('.preview-view');
+      const full = activeCard.querySelector('.full-view');
+      if (prev) prev.classList.add('hidden');
+      if (full) full.classList.remove('hidden');
     }
 
+    function updateActive() {
+      const viewportCenter = window.innerHeight / 2;
+      let closest = activeEntry;
+      let closestDist = Infinity;
+      entries.forEach(entry => {
+        const rect = entry.getBoundingClientRect();
+        const dist = Math.abs(rect.top + rect.height / 2 - viewportCenter);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closest = entry;
+        }
+      });
+      const currentRect = activeEntry.getBoundingClientRect();
+      const currentDist = Math.abs(currentRect.top + currentRect.height / 2 - viewportCenter);
+      if (closest !== activeEntry && closestDist < currentDist - 30) {
+        activeEntry = closest;
+        setActive(activeEntry);
+      }
+    }
+
+    window.addEventListener('scroll', () => requestAnimationFrame(updateActive));
+    setActive(activeEntry);
     gsap.from('.timeline-entry', { opacity: 0, y: 50, duration: 0.6, stagger: 0.2 });
 
     document.querySelectorAll('[data-modal-target]').forEach(btn => {
