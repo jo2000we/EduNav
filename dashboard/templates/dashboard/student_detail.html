@@ -1,6 +1,78 @@
 {% extends "dashboard/base.html" %}
 {% block content %}
 <h1 class="text-2xl mb-4">Schüler: {{ student.pseudonym }}</h1>
-<p>Detailansicht folgt.</p>
-<a href="{% url 'classroom_list' %}" class="text-blue-600 hover:underline">Zurück zur Übersicht</a>
+<p class="mb-2">Gruppe: {{ student.classroom.get_group_type_display }}</p>
+{% if student.overall_goal %}
+<p class="mb-4"><strong>Gesamtziel bis {{ student.overall_goal_due_date }}:</strong> {{ student.overall_goal }}</p>
+{% endif %}
+
+<div class="space-y-6">
+  {% for entry in entries %}
+  <div class="border p-4 rounded">
+    <h2 class="font-semibold mb-2">{{ entry.session_date }}</h2>
+    {% if entry.goals %}<p><strong>Ziele:</strong> {{ entry.goals|join:", " }}</p>{% endif %}
+    {% if entry.priorities %}<p><strong>Prioritäten:</strong> {{ entry.priorities|join:", " }}</p>{% endif %}
+    {% if entry.strategies %}<p><strong>Strategien:</strong> {{ entry.strategies|join:", " }}</p>{% endif %}
+    {% if entry.resources %}<p><strong>Ressourcen:</strong> {{ entry.resources|join:", " }}</p>{% endif %}
+    {% if entry.time_planning %}
+    <p><strong>Zeitplanung:</strong>
+      {% for tp in entry.time_planning %}
+        {{ tp.goal }} ({{ tp.time }}){% if not forloop.last %}; {% endif %}
+      {% endfor %}
+    </p>
+    {% endif %}
+    {% if entry.expectations %}
+    <p><strong>Erwartungen:</strong>
+      {% for exp in entry.expectations %}
+        {{ exp.goal }}{% if exp.indicator %}: {{ exp.indicator }}{% endif %}{% if not forloop.last %}; {% endif %}
+      {% endfor %}
+    </p>
+    {% endif %}
+    {% if entry.steps %}<p><strong>Schritte:</strong> {{ entry.steps|join:", " }}</p>{% endif %}
+    {% if entry.time_usage %}
+    <p><strong>Zeitnutzung:</strong>
+      {% for tu in entry.time_usage %}
+        {{ tu.goal }} ({{ tu.time }}){% if not forloop.last %}; {% endif %}
+      {% endfor %}
+    </p>
+    {% endif %}
+    {% if entry.strategy_check %}
+    <p><strong>Strategie-Check:</strong>
+      {% for sc in entry.strategy_check %}
+        {{ sc.strategy }}{% if sc.used is not None %} – {{ sc.used|yesno:'genutzt,nicht genutzt' }}{% endif %}{% if sc.useful is not None %}, {{ sc.useful|yesno:'sinnvoll,nicht sinnvoll' }}{% endif %}{% if sc.adaptation %} – {{ sc.adaptation }}{% endif %}{% if not forloop.last %}; {% endif %}
+      {% endfor %}
+    </p>
+    {% endif %}
+    {% if entry.problems %}<p><strong>Probleme:</strong> {{ entry.problems }}</p>{% endif %}
+    {% if entry.emotions %}<p><strong>Emotionen:</strong> {{ entry.emotions }}</p>{% endif %}
+    {% if entry.goal_achievement %}
+    <p><strong>Zielerreichung:</strong>
+      {% for ga in entry.goal_achievement %}
+        {{ ga.goal }}: {{ ga.achievement }}{% if ga.comment %} – {{ ga.comment }}{% endif %}{% if not forloop.last %}; {% endif %}
+      {% endfor %}
+    </p>
+    {% endif %}
+    {% if entry.strategy_evaluation %}<p><strong>Strategie-Bewertung:</strong> {{ entry.strategy_evaluation|join:", " }}</p>{% endif %}
+    {% if entry.learned_subject %}<p><strong>Gelerntes (Inhaltlich):</strong> {{ entry.learned_subject }}</p>{% endif %}
+    {% if entry.learned_work %}<p><strong>Gelerntes (Arbeitsweise):</strong> {{ entry.learned_work }}</p>{% endif %}
+    {% if entry.planning_realistic %}<p><strong>War die Planung realistisch?</strong> {{ entry.planning_realistic }}</p>{% endif %}
+    {% if entry.planning_deviations %}<p><strong>Abweichungen von der Planung:</strong> {{ entry.planning_deviations }}</p>{% endif %}
+    {% if entry.motivation_rating %}<p><strong>Motivation (Bewertung):</strong> {{ entry.motivation_rating }}</p>{% endif %}
+    {% if entry.motivation_improve %}<p><strong>Motivation verbessern:</strong> {{ entry.motivation_improve }}</p>{% endif %}
+    {% if entry.next_phase %}<p><strong>Nächste Lernphase:</strong> {{ entry.next_phase }}</p>{% endif %}
+    {% if entry.strategy_outlook %}<p><strong>Strategie-Ausblick:</strong> {{ entry.strategy_outlook }}</p>{% endif %}
+  </div>
+  {% empty %}
+  <p>Keine Einträge vorhanden.</p>
+  {% endfor %}
+</div>
+
+<div class="mt-4 space-x-4">
+  <a href="{% url 'student_export' classroom_id=student.classroom.id student_id=student.id %}?format=json" class="text-blue-600 hover:underline">Export als JSON</a>
+  <a href="{% url 'student_export' classroom_id=student.classroom.id student_id=student.id %}?format=csv" class="text-blue-600 hover:underline">Export als CSV</a>
+  <a href="{% url 'student_export' classroom_id=student.classroom.id student_id=student.id %}?format=xlsx" class="text-blue-600 hover:underline">Export als XLSX</a>
+</div>
+
+<a href="{% url 'classroom_list' %}" class="text-blue-600 hover:underline mt-4 inline-block">Zurück zur Übersicht</a>
 {% endblock %}
+

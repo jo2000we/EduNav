@@ -199,7 +199,12 @@ def student_reset_password(request, classroom_id, student_id):
 def student_detail(request, classroom_id, student_id):
     classroom = get_object_or_404(Classroom, id=classroom_id, teacher=request.user)
     student = get_object_or_404(Student, id=student_id, classroom=classroom)
-    return render(request, "dashboard/student_detail.html", {"student": student})
+    entries = student.entries.order_by("-session_date")
+    return render(
+        request,
+        "dashboard/student_detail.html",
+        {"student": student, "entries": entries},
+    )
 
 
 def validate_openai_key(key: str) -> bool:
