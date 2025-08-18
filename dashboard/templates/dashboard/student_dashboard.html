@@ -43,6 +43,16 @@
   }
   .modal-content {
     animation: zoomIn 0.3s ease;
+    border: 1px solid #e5e7eb;
+  }
+  .modal-form .section {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .modal-form .section:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
   }
 </style>
 
@@ -161,14 +171,18 @@
             {% endif %}
             {% if entry.problems %}<p class="mt-4"><span class="font-semibold">Probleme:</span> {{ entry.problems }}</p>{% endif %}
             {% if entry.emotions %}<p class="mt-2"><span class="font-semibold">Emotionen:</span> {{ entry.emotions }}</p>{% else %}<p class="text-red-500 text-sm mt-2">Emotionen fehlen</p>{% endif %}
+            {% if not entry.goal_achievement %}
             <div class="mt-4 text-center">
               <button data-modal-target="executionModal-{{ entry.id }}" onclick="setupExecutionModal({{ entry.id }})" class="bg-blue-500 text-white px-3 py-1 rounded">Aktualisieren</button>
             </div>
+            {% endif %}
           </div>
           {% else %}
+          {% if not entry.goal_achievement %}
           <div class="flex justify-center">
             <button data-modal-target="executionModal-{{ entry.id }}" onclick="setupExecutionModal({{ entry.id }})" class="w-24 h-24 rounded-full bg-blue-500 text-white text-sm flex items-center justify-center text-center">Durchführung<br>protokollieren</button>
           </div>
+          {% endif %}
           {% endif %}
         </div>
         <div class="reflection-section space-y-4">
@@ -238,30 +252,30 @@
   </div>
 
   <!-- Execution Modal -->
-  <div id="executionModal-{{ entry.id }}" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+  <div id="executionModal-{{ entry.id }}" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full bg-gray-900 bg-opacity-50">
     <div class="relative p-4 w-full max-w-2xl max-h-full">
       <div class="relative bg-white rounded-lg shadow modal-content">
         <div class="p-4">
           <h3 class="text-lg font-semibold mb-4">Durchführung</h3>
-          <form method="post" action="{% url 'student_entry_execution' entry.id %}" id="execution-form-{{ entry.id }}">
+          <form method="post" action="{% url 'student_entry_execution' entry.id %}" id="execution-form-{{ entry.id }}" class="modal-form">
             {% csrf_token %}
             <input type="hidden" name="steps" id="steps-{{ entry.id }}">
             <input type="hidden" name="time_usage" id="time-usage-{{ entry.id }}">
             <input type="hidden" name="strategy_check" id="strategy-check-{{ entry.id }}">
 
-            <div class="mb-4">
+            <div class="section">
               <label class="block mb-2">Was mache ich konkret?</label>
               <div id="steps-list-{{ entry.id }}" class="space-y-2"></div>
               <button type="button" id="add-unplanned-{{ entry.id }}" class="mt-2 bg-gray-200 px-2 py-1 rounded">ungeplante Beschäftigungen hinzufügen</button>
               <p class="text-sm text-gray-500 mt-1">Hake an, womit du dich gerade beschäftigst (nicht abgeschlossen).</p>
             </div>
 
-            <div class="mb-4">
+            <div class="section">
               <label class="block mb-2">Wie viel Zeit brauche ich tatsächlich?</label>
               <div id="time-usage-list-{{ entry.id }}" class="space-y-2"></div>
             </div>
 
-            <div class="mb-4">
+            <div class="section">
               <label class="block mb-2">Welche Strategien setze ich tatsächlich ein? Sind diese Strategien auch in der Praxis sinnvoll? Muss ich meine Strategien anpassen?</label>
               <table class="w-full text-left border" id="strategy-check-table-{{ entry.id }}">
                 <thead>
@@ -276,17 +290,20 @@
               </table>
             </div>
 
-            <div class="mb-4">
+            <div class="section">
               <label class="block mb-2">Gibt es Hindernisse? Passe ich meinen Plan an – wenn ja, wie?</label>
               <textarea name="problems" id="problems-{{ entry.id }}" class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5" rows="2"></textarea>
             </div>
 
-            <div class="mb-4">
+            <div class="section">
               <label class="block mb-2">Wie fühle ich mich (z. B. motiviert, blockiert, zufrieden)? Was unterstützt / stört meine Konzentration?</label>
               <textarea name="emotions" id="emotions-{{ entry.id }}" class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5" rows="2"></textarea>
             </div>
 
-            <button type="submit" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
+            <div class="flex justify-end space-x-2 mt-4">
+              <button type="button" data-modal-hide="executionModal-{{ entry.id }}" class="bg-red-500 text-white px-4 py-2 rounded">Abbrechen</button>
+              <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">Speichern</button>
+            </div>
           </form>
         </div>
       </div>
@@ -321,17 +338,16 @@
   {% endwith %}
 
   <!-- Reflection Modal -->
-  <div id="reflectionModal-{{ entry.id }}" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 left-0 right-0 z-50 flex justify-center items-center w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+  <div id="reflectionModal-{{ entry.id }}" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 left-0 right-0 z-50 flex justify-center items-center w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full bg-gray-900 bg-opacity-50">
     <div class="relative w-full max-w-4xl max-h-full">
       <div class="relative bg-white rounded-lg shadow modal-content">
         <div class="p-6">
           <h3 class="text-lg font-semibold mb-4">Reflexion</h3>
-          <form method="post" action="{% url 'student_entry_reflection' entry.id %}" id="reflection-form-{{ entry.id }}">
+          <form method="post" action="{% url 'student_entry_reflection' entry.id %}" id="reflection-form-{{ entry.id }}" class="modal-form">
             {% csrf_token %}
             <input type="hidden" name="goal_achievement" id="goal-achievement-{{ entry.id }}">
             <input type="hidden" name="strategy_evaluation" id="strategy-evaluation-{{ entry.id }}">
-
-            <div class="mb-4">
+            <div class="section">
               <h4 class="font-semibold mb-2">Habe ich meine Ziele erreicht? (vollständig / teilweise / nicht)</h4>
               <table class="w-full text-left border" id="goal-achievement-table-{{ entry.id }}">
                 <thead>
@@ -345,7 +361,7 @@
               </table>
             </div>
 
-            <div class="mb-4">
+            <div class="section">
               <h4 class="font-semibold mb-2">Bewertung: Strategien/Vorgehensweisen</h4>
               <table class="w-full text-left border" id="strategy-evaluation-table-{{ entry.id }}">
                 <thead>
@@ -360,68 +376,73 @@
               </table>
             </div>
 
-            <hr class="my-4">
-            <h4 class="font-semibold mb-2">Selbsteinschätzung</h4>
-            <div class="mb-4">
-              <label class="block mb-2">Was habe ich fachlich gelernt?</label>
-              {% with field_id="learned-subject-"|add:entry.id %}
-                {{ reflection_form.learned_subject|add_id:field_id }}
-              {% endwith %}
-            </div>
-            <div class="mb-4">
-              <label class="block mb-2">Was habe ich über meine Arbeitsweise gelernt?</label>
-              {% with field_id="learned-work-"|add:entry.id %}
-                {{ reflection_form.learned_work|add_id:field_id }}
-              {% endwith %}
-            </div>
-
-            <hr class="my-4">
-            <h4 class="font-semibold mb-2">Zeitmanagement</h4>
-            <div class="mb-4">
-              <label class="block mb-2">War meine Planung realistisch?</label>
-              {% with field_id="planning-realistic-"|add:entry.id %}
-                {{ reflection_form.planning_realistic|add_id:field_id }}
-              {% endwith %}
-            </div>
-            <div class="mb-4">
-              <label class="block mb-2">Wo gab es Abweichungen?</label>
-              {% with field_id="planning-deviations-"|add:entry.id %}
-                {{ reflection_form.planning_deviations|add_id:field_id }}
-              {% endwith %}
+            <div class="section">
+              <h4 class="font-semibold mb-2">Selbsteinschätzung</h4>
+              <div class="mb-4">
+                <label class="block mb-2">Was habe ich fachlich gelernt?</label>
+                {% with field_id="learned-subject-"|add:entry.id %}
+                  {{ reflection_form.learned_subject|add_id:field_id }}
+                {% endwith %}
+              </div>
+              <div class="mb-4">
+                <label class="block mb-2">Was habe ich über meine Arbeitsweise gelernt?</label>
+                {% with field_id="learned-work-"|add:entry.id %}
+                  {{ reflection_form.learned_work|add_id:field_id }}
+                {% endwith %}
+              </div>
             </div>
 
-            <hr class="my-4">
-            <h4 class="font-semibold mb-2">Emotionen/Motivation</h4>
-            <div class="mb-4">
-              <label class="block mb-2">Wie bewerte ich meine Motivation über die Zeit hinweg?</label>
-              {% with field_id="motivation-rating-"|add:entry.id %}
-                {{ reflection_form.motivation_rating|add_id:field_id }}
-              {% endwith %}
-            </div>
-            <div class="mb-4">
-              <label class="block mb-2">Was könnte ich tun, um sie zu stärken?</label>
-              {% with field_id="motivation-improve-"|add:entry.id %}
-                {{ reflection_form.motivation_improve|add_id:field_id }}
-              {% endwith %}
-            </div>
-
-            <hr class="my-4">
-            <h4 class="font-semibold mb-2">Ausblick</h4>
-            <div class="mb-4">
-              <label class="block mb-2">Was nehme ich mir für die nächste Phase konkret vor?</label>
-              {% with field_id="next-phase-"|add:entry.id %}
-                {{ reflection_form.next_phase|add_id:field_id }}
-              {% endwith %}
-            </div>
-            <div class="mb-4">
-              <label class="block mb-2">Welche Strategien will ich beibehalten oder ändern?</label>
-              {% with field_id="strategy-outlook-"|add:entry.id %}
-                {{ reflection_form.strategy_outlook|add_id:field_id }}
-              {% endwith %}
+            <div class="section">
+              <h4 class="font-semibold mb-2">Zeitmanagement</h4>
+              <div class="mb-4">
+                <label class="block mb-2">War meine Planung realistisch?</label>
+                {% with field_id="planning-realistic-"|add:entry.id %}
+                  {{ reflection_form.planning_realistic|add_id:field_id }}
+                {% endwith %}
+              </div>
+              <div class="mb-4">
+                <label class="block mb-2">Wo gab es Abweichungen?</label>
+                {% with field_id="planning-deviations-"|add:entry.id %}
+                  {{ reflection_form.planning_deviations|add_id:field_id }}
+                {% endwith %}
+              </div>
             </div>
 
-            <div class="text-right">
-              <button type="submit" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
+            <div class="section">
+              <h4 class="font-semibold mb-2">Emotionen/Motivation</h4>
+              <div class="mb-4">
+                <label class="block mb-2">Wie bewerte ich meine Motivation über die Zeit hinweg?</label>
+                {% with field_id="motivation-rating-"|add:entry.id %}
+                  {{ reflection_form.motivation_rating|add_id:field_id }}
+                {% endwith %}
+              </div>
+              <div class="mb-4">
+                <label class="block mb-2">Was könnte ich tun, um sie zu stärken?</label>
+                {% with field_id="motivation-improve-"|add:entry.id %}
+                  {{ reflection_form.motivation_improve|add_id:field_id }}
+                {% endwith %}
+              </div>
+            </div>
+
+            <div class="section">
+              <h4 class="font-semibold mb-2">Ausblick</h4>
+              <div class="mb-4">
+                <label class="block mb-2">Was nehme ich mir für die nächste Phase konkret vor?</label>
+                {% with field_id="next-phase-"|add:entry.id %}
+                  {{ reflection_form.next_phase|add_id:field_id }}
+                {% endwith %}
+              </div>
+              <div class="mb-4">
+                <label class="block mb-2">Welche Strategien will ich beibehalten oder ändern?</label>
+                {% with field_id="strategy-outlook-"|add:entry.id %}
+                  {{ reflection_form.strategy_outlook|add_id:field_id }}
+                {% endwith %}
+              </div>
+            </div>
+
+            <div class="flex justify-end space-x-2 mt-4">
+              <button type="button" data-modal-hide="reflectionModal-{{ entry.id }}" class="bg-red-500 text-white px-4 py-2 rounded">Abbrechen</button>
+              <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">Speichern</button>
             </div>
           </form>
         </div>
@@ -432,12 +453,12 @@
 </div>
 
 <!-- Planning Modal -->
-<div id="planningModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+<div id="planningModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 flex justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full bg-gray-900 bg-opacity-50">
   <div class="relative p-4 w-full max-w-2xl max-h-full">
     <div class="relative bg-white rounded-lg shadow modal-content">
       <div class="p-4">
         <h3 class="text-lg font-semibold mb-4">Tagesplanung</h3>
-        <form method="post" action="{% url 'student_entry_create' %}" id="planning-form">
+        <form method="post" action="{% url 'student_entry_create' %}" id="planning-form" class="modal-form">
           {% csrf_token %}
           {{ planning_form.goals }}
           {{ planning_form.priorities }}
@@ -446,46 +467,49 @@
           {{ planning_form.time_planning }}
           {{ planning_form.expectations }}
 
-          <div class="mb-4">
+          <div class="section">
             <label class="block mb-2">Ziele: Was will ich heute / diese Woche erreichen? (fachliche Ziele, Teilaufgaben, persönliche Lernziele)</label>
             <div id="goals-list" class="flex flex-wrap gap-2"></div>
             <button type="button" id="add-goal" class="mt-2 bg-gray-200 px-2 py-1 rounded">Ziel hinzufügen</button>
           </div>
 
-          <div class="mb-4">
+          <div class="section">
             <label class="block mb-2">Prioritäten: Welche Aufgaben sind am wichtigsten?</label>
             <div id="priority-list" class="flex flex-col gap-2"></div>
             <p class="text-sm text-gray-500 mt-2">Klicke die besonders wichtigen Ziele an und ordne sie entsprechend in der Reihenfolge in der du sie bearbeiten willst an</p>
           </div>
 
-          <div class="mb-4">
+          <div class="section">
             <label class="block mb-2">Vorgehen/Strategien: Wie will ich vorgehen? (z. B. Recherche, Entwürfe, Austausch, Versuch & Irrtum)</label>
             <div id="strategy-list" class="flex flex-wrap gap-2"></div>
             <button type="button" id="add-strategy" class="mt-2 bg-gray-200 px-2 py-1 rounded">Vorgehen/Strategien hinzufügen</button>
           </div>
 
-          <div class="mb-4">
+          <div class="section">
             <label class="block mb-2">Ressourcen: Welche Materialien, Werkzeuge, Personen brauche ich?</label>
             <div id="resource-list" class="flex flex-wrap gap-2"></div>
             <button type="button" id="add-resource" class="mt-2 bg-gray-200 px-2 py-1 rounded">Ressource hinzufügen</button>
           </div>
 
-          <div class="mb-4">
+          <div class="section">
             <label class="block mb-2">Zeitplanung: Wie lange möchte ich für welche Aufgabe arbeiten?</label>
             <div id="time-planning-list" class="space-y-2"></div>
           </div>
 
-  <div class="mb-4">
-    <label class="block mb-2">Erwartungen: Woran merke ich am Ende, dass ich erfolgreich war?</label>
-    <table class="w-full text-left border" id="expectations-table">
-      <thead>
-        <tr><th class="border px-2 py-1">Ziel</th><th class="border px-2 py-1">Indikatoren... Woran messe ich den Erfolg?</th></tr>
-      </thead>
-      <tbody id="expectations-body"></tbody>
-    </table>
-  </div>
+          <div class="section">
+            <label class="block mb-2">Erwartungen: Woran merke ich am Ende, dass ich erfolgreich war?</label>
+            <table class="w-full text-left border" id="expectations-table">
+              <thead>
+                <tr><th class="border px-2 py-1">Ziel</th><th class="border px-2 py-1">Indikatoren... Woran messe ich den Erfolg?</th></tr>
+              </thead>
+              <tbody id="expectations-body"></tbody>
+            </table>
+          </div>
 
-          <button type="submit" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
+          <div class="flex justify-end space-x-2 mt-4">
+            <button type="button" data-modal-hide="planningModal" class="bg-red-500 text-white px-4 py-2 rounded">Abbrechen</button>
+            <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">Speichern</button>
+          </div>
         </form>
       </div>
     </div>
