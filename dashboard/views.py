@@ -179,6 +179,23 @@ def student_delete(request, classroom_id, student_id):
 
 
 @login_required
+def student_reset_password(request, classroom_id, student_id):
+    classroom = get_object_or_404(Classroom, id=classroom_id, teacher=request.user)
+    student = get_object_or_404(Student, id=student_id, classroom=classroom)
+    student.password = ""
+    student.save(update_fields=["password"])
+    if request.headers.get("HX-Request"):
+        students = classroom.students.all()
+        form = StudentForm()
+        return render(
+            request,
+            "dashboard/student_list.html",
+            {"classroom": classroom, "students": students, "form": form},
+        )
+    return redirect("student_list", classroom_id=classroom.id)
+
+
+@login_required
 def student_detail(request, classroom_id, student_id):
     classroom = get_object_or_404(Classroom, id=classroom_id, teacher=request.user)
     student = get_object_or_404(Student, id=student_id, classroom=classroom)
