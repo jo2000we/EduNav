@@ -250,4 +250,15 @@ def update_openai_settings(request):
         return JsonResponse({"error": "invalid temperature"}, status=400)
     settings.save()
     valid = validate_openai_key(key)
-    return JsonResponse({"valid": valid})
+    model_valid = True
+    if model and valid:
+        try:
+            resp = requests.get(
+                f"https://api.openai.com/v1/models/{model}",
+                headers={"Authorization": f"Bearer {key}"},
+                timeout=5,
+            )
+            model_valid = resp.status_code == 200
+        except requests.RequestException:
+            model_valid = False
+    return JsonResponse({"valid": valid and model_valid, "model_valid": model_valid})

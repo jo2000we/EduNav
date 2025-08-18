@@ -13,25 +13,23 @@ from .models import Classroom, Student
 
 def _minutes(hhmm):
     try:
-        h, m = map(int, (hhmm or "0:0").split(":"))
+        h, m = map(int, (hhmm or "").split(":"))
         return h * 60 + m
     except Exception:
-        return 0
+        return None
 
 
 def _time_delta(entry):
-    p = {i.get("goal"): _minutes(i.get("time", "0:0")) for i in entry.time_planning or []}
-    a = {i.get("goal"): _minutes(i.get("time", "0:0")) for i in entry.time_usage or []}
+    p = {i.get("goal"): _minutes(i.get("time")) for i in entry.time_planning or []}
+    a = {i.get("goal"): _minutes(i.get("time")) for i in entry.time_usage or []}
     keys = set(p) | set(a)
-    return [
-        {
-            "Ziel": k,
-            "Plan": p.get(k, 0),
-            "Ist": a.get(k, 0),
-            "Delta": a.get(k, 0) - p.get(k, 0),
-        }
-        for k in keys
-    ]
+    result = []
+    for k in keys:
+        plan = p.get(k)
+        act = a.get(k)
+        delta = act - plan if plan is not None and act is not None else None
+        result.append({"Ziel": k, "Plan": plan, "Ist": act, "Delta": delta})
+    return result
 
 
 @login_required
@@ -157,9 +155,13 @@ def _entry_flat(entry):
         return "; ".join(parts)
 
     def _td(lst):
-        return "; ".join(
-            f"{d['Ziel']}: {d['Delta']} Min" for d in lst
-        )
+        parts = []
+        for d in lst:
+            delta = d.get('Delta')
+            parts.append(
+                f"{d['Ziel']}: {delta} Min" if delta is not None else f"{d['Ziel']}:"
+            )
+        return "; ".join(parts)
 
     return {
         "Datum": str(entry.session_date),

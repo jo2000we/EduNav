@@ -206,7 +206,7 @@ def _chat_phase(request, phase, messages, entry_id=None):
 
     student = Student.objects.get(id=request.session["student_id"])
     diary = _student_diary_json(student)
-    minute_limit = student.classroom.max_planning_execution_minutes
+    minute_limit = student.classroom.max_planning_execution_minutes or 90
 
     if not messages:
         intro = (
@@ -410,6 +410,7 @@ def _chat_phase(request, phase, messages, entry_id=None):
         ]
 
     submitted = False
+    current_entry_id = entry_id
     for _ in range(8):
         try:
             completion = client.chat.completions.create(
@@ -423,33 +424,41 @@ def _chat_phase(request, phase, messages, entry_id=None):
         message = completion.choices[0].message
         finish = completion.choices[0].finish_reason
         if finish == "tool_calls" and message.tool_calls:
-            if submitted:
-                full_messages.append(
-                    {"role": "assistant", "content": "(Hinweis: Daten bereits gespeichert)"}
-                )
-                return {"reply": "(Hinweis: Daten bereits gespeichert)"}
-            submitted = True
-            call = message.tool_calls[0]
-            full_messages.append({"role": message.role, "tool_calls": [call]})
-            args = json.loads(call.function.arguments or "{}")
-            api_resp = _call_phase_api(phase, request, args, entry_id)
-            tool_payload = {
-                "status": getattr(api_resp, "status_code", 0),
-                "body": api_resp.content.decode(errors="replace"),
-                "content_type": getattr(api_resp, "headers", {}).get("Content-Type", ""),
-            }
-            full_messages.append(
-                {
-                    "role": "tool",
-                    "tool_call_id": call.id,
-                    "name": call.function.name,
-                    "content": json.dumps(tool_payload, ensure_ascii=False),
+            for call in message.tool_calls:
+                if submitted:
+                    msg = (
+                        f"Plan gespeichert – Eintrags-ID {current_entry_id}"
+                        if phase == "planning"
+                        else f"{phase.capitalize()} bereits gespeichert"
+                    )
+                    full_messages.append({"role": "assistant", "content": msg})
+                    return {"reply": msg, "entry_id": current_entry_id}
+                submitted = True
+                full_messages.append({"role": message.role, "tool_calls": [call]})
+                args = json.loads(call.function.arguments or "{}")
+                api_resp = _call_phase_api(phase, request, args, current_entry_id)
+                if phase == "planning" and getattr(api_resp, "status_code", 0) == 200:
+                    try:
+                        current_entry_id = json.loads(api_resp.content).get("entry_id")
+                    except Exception:
+                        pass
+                tool_payload = {
+                    "status": getattr(api_resp, "status_code", 0),
+                    "body": api_resp.content.decode(errors="replace"),
+                    "content_type": getattr(api_resp, "headers", {}).get("Content-Type", ""),
                 }
-            )
+                full_messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": call.id,
+                        "name": call.function.name,
+                        "content": json.dumps(tool_payload, ensure_ascii=False),
+                    }
+                )
             continue
         if message.content:
             full_messages.append({"role": message.role, "content": message.content})
-        return {"reply": message.content or ""}
+        return {"reply": message.content or "", "entry_id": current_entry_id}
     return {"error": "Conversation loop limit reached"}
 
 
@@ -576,7 +585,7 @@ def create_entry(request):
                 form.cleaned_data.get("time_planning", [])
             )
             limit = student.classroom.max_planning_execution_minutes
-            if planning_minutes > limit:
+            if limit and planning_minutes > limit:
                 messages.error(
                     request,
                     f"Die Gesamtzeit darf {limit} Minuten nicht überschreiten.",
@@ -597,7 +606,7 @@ def add_execution(request, entry_id):
         if form.is_valid():
             usage_minutes = _total_minutes(form.cleaned_data.get("time_usage", []))
             limit = student.classroom.max_planning_execution_minutes
-            if usage_minutes > limit:
+            if limit and usage_minutes > limit:
                 messages.error(
                     request,
                     f"Die Gesamtzeit darf {limit} Minuten nicht überschreiten.",
@@ -615,6 +624,10 @@ def add_reflection(request, entry_id):
         form = ReflectionForm(request.POST, instance=entry)
         if form.is_valid():
             form.save()
+        else:
+            for field, errs in form.errors.items():
+                for err in errs:
+                    messages.error(request, f"{field}: {err}")
     return redirect("student_dashboard")
 
 
@@ -678,7 +691,7 @@ def create_entry_json(request):
     if form.is_valid():
         planning_minutes = _total_minutes(form.cleaned_data.get("time_planning", []))
         limit = student.classroom.max_planning_execution_minutes
-        if planning_minutes > limit:
+        if limit and planning_minutes > limit:
             return JsonResponse(
                 {"error": f"Die Gesamtzeit darf {limit} Minuten nicht überschreiten."},
                 status=400,
@@ -711,6 +724,7 @@ def add_execution_json(request, entry_id):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
+    payload["steps"] = _clean_list(payload.get("steps", []))
     normalized = []
     for idx, item in enumerate(payload.get("time_usage", [])):
         try:
@@ -719,10 +733,19 @@ def add_execution_json(request, entry_id):
             return JsonResponse({"error": f"time_usage[{idx}].time {e}"}, status=400)
         normalized.append(item)
     payload["time_usage"] = normalized
-
+    cleaned_sc = []
+    seen = set()
     for sc in payload.get("strategy_check", []):
         if "adaptation" in sc and "change" not in sc:
             sc["change"] = sc.pop("adaptation")
+        sc["strategy"] = " ".join((sc.get("strategy", "").split()))
+        if sc.get("change"):
+            sc["change"] = " ".join(sc["change"].split())
+        name = sc.get("strategy")
+        if name and name not in seen:
+            seen.add(name)
+            cleaned_sc.append(sc)
+    payload["strategy_check"] = cleaned_sc
     form_data = {
         "steps": json.dumps(payload.get("steps", [])),
         "time_usage": json.dumps(payload.get("time_usage", [])),
@@ -734,7 +757,7 @@ def add_execution_json(request, entry_id):
     if form.is_valid():
         usage_minutes = _total_minutes(form.cleaned_data.get("time_usage", []))
         limit = student.classroom.max_planning_execution_minutes
-        if usage_minutes > limit:
+        if limit and usage_minutes > limit:
             return JsonResponse(
                 {"error": f"Die Gesamtzeit darf {limit} Minuten nicht überschreiten."},
                 status=400,
@@ -777,6 +800,7 @@ def add_reflection_json(request, entry_id):
             se["reuse"] = "ja" if se["reuse"] else "nein"
         if "reason" in se and "comment" not in se:
             se["comment"] = se.pop("reason")
+        se["strategy"] = " ".join((se.get("strategy", "").split()))
     ga_list = payload.get("goal_achievement", [])
     planned_goals = entry.goals or []
     if ga_list and planned_goals:
@@ -817,7 +841,10 @@ def chat_planning(request):
         if result["error"] == "Conversation loop limit reached":
             status = 500
         return JsonResponse(result, status=status)
-    return JsonResponse({"reply": result["reply"]})
+    resp = {"reply": result["reply"]}
+    if result.get("entry_id") is not None:
+        resp["entry_id"] = result["entry_id"]
+    return JsonResponse(resp)
 
 
 @student_required
@@ -834,7 +861,10 @@ def chat_execution(request, entry_id):
         if result["error"] == "Conversation loop limit reached":
             status = 500
         return JsonResponse(result, status=status)
-    return JsonResponse({"reply": result["reply"]})
+    resp = {"reply": result["reply"]}
+    if result.get("entry_id") is not None:
+        resp["entry_id"] = result["entry_id"]
+    return JsonResponse(resp)
 
 
 @student_required
@@ -851,4 +881,7 @@ def chat_reflection(request, entry_id):
         if result["error"] == "Conversation loop limit reached":
             status = 500
         return JsonResponse(result, status=status)
-    return JsonResponse({"reply": result["reply"]})
+    resp = {"reply": result["reply"]}
+    if result.get("entry_id") is not None:
+        resp["entry_id"] = result["entry_id"]
+    return JsonResponse(resp)

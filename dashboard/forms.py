@@ -454,8 +454,8 @@ class ReflectionForm(forms.ModelForm):
         except json.JSONDecodeError:
             se = []
         for item in se:
-            if not item.get("helpful") or not item.get("reuse"):
+            if not item.get("strategy") or not item.get("helpful") or not item.get("reuse"):
                 raise forms.ValidationError(
-                    "Für jede Strategie muss angegeben werden, ob sie geholfen hat und ob sie erneut genutzt wird."
+                    "Für jede Strategie müssen Name, Nützlichkeit und Wiederverwendung angegeben werden."
                 )
         return se

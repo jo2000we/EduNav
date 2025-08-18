@@ -370,6 +370,9 @@ function sendMessage(type, message) {
       chatHistory[type].push({role: 'assistant', content: data.error});
     } else {
       chatHistory[type].push({role: 'assistant', content: data.reply});
+      if (data.entry_id !== undefined) {
+        currentEntryId = data.entry_id;
+      }
     }
     renderChat(type);
   })
