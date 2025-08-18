@@ -90,3 +90,18 @@ class SRLEntry(models.Model):
 
     def __str__(self):
         return f"{self.student.pseudonym}: {self.session_date}"
+
+
+class AppSettings(models.Model):
+    """Singleton model to store application wide configuration."""
+
+    openai_api_key = models.CharField(max_length=255, blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def load(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return "App Settings"
