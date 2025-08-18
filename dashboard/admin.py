@@ -7,7 +7,13 @@ class StudentInline(admin.TabularInline):
 
 @admin.register(Classroom)
 class ClassroomAdmin(admin.ModelAdmin):
-    list_display = ("name", "teacher", "group_type")
+    list_display = (
+        "name",
+        "teacher",
+        "group_type",
+        "max_entries_per_day",
+        "max_entries_per_week",
+    )
     list_filter = ("group_type",)
     inlines = [StudentInline]
 

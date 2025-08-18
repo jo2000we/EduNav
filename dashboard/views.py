@@ -7,7 +7,12 @@ import json
 import requests
 
 from .models import Classroom, Student, AppSettings
-from .forms import ClassroomForm, StudentForm, ClassOverallGoalForm
+from .forms import (
+    ClassroomForm,
+    StudentForm,
+    ClassOverallGoalForm,
+    ClassEntryLimitForm,
+)
 
 
 @login_required
@@ -37,6 +42,13 @@ def classroom_create(request):
 @login_required
 def set_class_overall_goal(request, classroom_id):
     classroom = get_object_or_404(Classroom, id=classroom_id, teacher=request.user)
+    first_student = classroom.students.first()
+    initial = {}
+    if first_student:
+        initial = {
+            "overall_goal": first_student.overall_goal or "",
+            "overall_goal_due_date": first_student.overall_goal_due_date,
+        }
     if request.method == "POST":
         form = ClassOverallGoalForm(request.POST)
         if form.is_valid():
@@ -49,11 +61,34 @@ def set_class_overall_goal(request, classroom_id):
                 return response
             return redirect("classroom_list")
     else:
-        form = ClassOverallGoalForm()
+        form = ClassOverallGoalForm(initial=initial)
     if request.headers.get("HX-Request"):
         return render(
             request,
             "dashboard/class_overall_goal_form.html",
+            {"form": form, "classroom": classroom},
+        )
+    return redirect("classroom_list")
+
+
+@login_required
+def set_class_entry_limits(request, classroom_id):
+    classroom = get_object_or_404(Classroom, id=classroom_id, teacher=request.user)
+    if request.method == "POST":
+        form = ClassEntryLimitForm(request.POST, instance=classroom)
+        if form.is_valid():
+            form.save()
+            if request.headers.get("HX-Request"):
+                response = HttpResponse()
+                response["HX-Redirect"] = reverse("classroom_list")
+                return response
+            return redirect("classroom_list")
+    else:
+        form = ClassEntryLimitForm(instance=classroom)
+    if request.headers.get("HX-Request"):
+        return render(
+            request,
+            "dashboard/class_entry_limits_form.html",
             {"form": form, "classroom": classroom},
         )
     return redirect("classroom_list")

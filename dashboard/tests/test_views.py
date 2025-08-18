@@ -51,3 +51,62 @@ def test_set_class_overall_goal_updates_students(client):
     assert s2.overall_goal == "Test"
     assert str(s1.overall_goal_due_date) == "2024-12-31"
     assert str(s2.overall_goal_due_date) == "2024-12-31"
+
+
+@pytest.mark.django_db
+def test_set_class_overall_goal_prefills_form(client):
+    user = User.objects.create_user(username="t1", password="pass")
+    client.login(username="t1", password="pass")
+    classroom = Classroom.objects.create(teacher=user, name="Klasse A", group_type="CONTROL")
+    Student.objects.create(
+        classroom=classroom,
+        pseudonym="S1",
+        overall_goal="Bestehen",
+        overall_goal_due_date="2024-12-31",
+    )
+    response = client.get(
+        reverse("class_overall_goal", args=[classroom.id]),
+        HTTP_HX_REQUEST="true",
+    )
+    assert b"Bestehen" in response.content
+    assert b"2024-12-31" in response.content
+
+
+@pytest.mark.django_db
+def test_class_entry_limits_updates_classroom(client):
+    user = User.objects.create_user(username="t1", password="pass")
+    client.login(username="t1", password="pass")
+    classroom = Classroom.objects.create(
+        teacher=user,
+        name="Klasse A",
+        group_type="CONTROL",
+        max_entries_per_day=1,
+        max_entries_per_week=2,
+    )
+    response = client.post(
+        reverse("class_entry_limits", args=[classroom.id]),
+        {"max_entries_per_day": 3, "max_entries_per_week": 4},
+    )
+    assert response.status_code == 302
+    classroom.refresh_from_db()
+    assert classroom.max_entries_per_day == 3
+    assert classroom.max_entries_per_week == 4
+
+
+@pytest.mark.django_db
+def test_class_entry_limits_prefills_form(client):
+    user = User.objects.create_user(username="t1", password="pass")
+    client.login(username="t1", password="pass")
+    classroom = Classroom.objects.create(
+        teacher=user,
+        name="Klasse A",
+        group_type="CONTROL",
+        max_entries_per_day=5,
+        max_entries_per_week=6,
+    )
+    response = client.get(
+        reverse("class_entry_limits", args=[classroom.id]),
+        HTTP_HX_REQUEST="true",
+    )
+    assert b'value="5" selected' in response.content
+    assert b'value="6" selected' in response.content

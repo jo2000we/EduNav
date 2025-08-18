@@ -41,6 +41,15 @@
                 class="text-blue-600 hover:underline block mt-2">
                 Gesamtziel festlegen
             </button>
+            <button
+                data-modal-target="entry-limit-modal"
+                data-modal-toggle="entry-limit-modal"
+                hx-get="{% url 'class_entry_limits' classroom.id %}"
+                hx-target="#entry-limit-modal-content"
+                hx-swap="innerHTML"
+                class="text-blue-600 hover:underline block mt-2">
+                Eintragslimit festlegen
+            </button>
         </div>
     {% empty %}
         <p>Keine Klassenräume vorhanden.</p>
@@ -75,6 +84,22 @@
         </button>
       </div>
       <div id="overall-goal-modal-content" class="p-4"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Entry limit modal -->
+<div id="entry-limit-modal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+  <div class="relative p-4 w-full max-w-md max-h-full">
+    <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+      <div class="flex items-center justify-between p-4 border-b rounded-t dark:border-gray-600">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Eintragslimit festlegen</h3>
+        <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-hide="entry-limit-modal">
+          <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 1l12 12M13 1L1 13"/></svg>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+      <div id="entry-limit-modal-content" class="p-4"></div>
     </div>
   </div>
 </div>
