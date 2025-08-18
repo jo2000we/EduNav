@@ -12,8 +12,11 @@ from .models import Classroom, Student
 
 
 def _minutes(hhmm):
-    h, m = map(int, hhmm.split(":"))
-    return h * 60 + m
+    try:
+        h, m = map(int, (hhmm or "0:0").split(":"))
+        return h * 60 + m
+    except Exception:
+        return 0
 
 
 def _time_delta(entry):
@@ -55,7 +58,7 @@ def _entry_nested(entry):
                 "Strategie": item.get("strategy"),
                 "Genutzt": item.get("used"),
                 "Sinnvoll": item.get("useful"),
-                "Anpassung": item.get("change"),
+                "Anpassung": item.get("change") or item.get("adaptation"),
             }
             for item in lst
         ]
@@ -126,8 +129,9 @@ def _entry_flat(entry):
                 txt += f" – {'genutzt' if item['used'] else 'nicht genutzt'}"
             if item.get("useful") is not None:
                 txt += f", {'sinnvoll' if item['useful'] else 'nicht sinnvoll'}"
-            if item.get("change"):
-                txt += f" – {item['change']}"
+            ch = item.get("change") or item.get("adaptation")
+            if ch:
+                txt += f" – {ch}"
             parts.append(txt)
         return "; ".join(parts)
 
@@ -144,8 +148,9 @@ def _entry_flat(entry):
             hv = item.get("helpful")
             if hv is not None:
                 txt += f": {hv}"
-            if item.get("comment"):
-                txt += f" – {item['comment']}"
+            comment = item.get("comment") or item.get("reason")
+            if comment:
+                txt += f" – {comment}"
             if "reuse" in item:
                 txt += f" (erneut: {item['reuse']})"
             parts.append(txt)

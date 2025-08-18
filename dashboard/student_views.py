@@ -146,7 +146,7 @@ REFL_DEVELOPER_PROMPT = (
     "1. Lade die heute geplanten Ziele (Reihenfolge = goal_achievement).\n"
     "2. Führe die Schritte 1–7 aus.\n"
     "3. Baue JSON exakt: { 'goal_achievement':[{'achievement':'vollständig','comment':'...'}],"
-    " 'strategy_evaluation':[{'strategy':'...','helpful':true,'comment':'...','reuse':true}],"
+    " 'strategy_evaluation':[{'strategy':'...','helpful':'ja|teilweise|nein','comment':'...','reuse':'ja|nein|vielleicht'}],"
     " 'learned_subject':'...', 'learned_work':'...', 'planning_realistic':'...',"
     " 'planning_deviations':'...', 'motivation_rating':'7/10', 'motivation_improve':'...',"
     " 'next_phase':'...', 'strategy_outlook':'...' }.\n"
@@ -309,12 +309,7 @@ def _chat_phase(request, phase, messages, entry_id=None):
                                         "useful": {"type": "boolean"},
                                         "change": {"type": "string"},
                                     },
-                                    "required": [
-                                        "strategy",
-                                        "used",
-                                        "useful",
-                                        "change",
-                                    ],
+                                    "required": ["strategy", "used", "useful"],
                                 },
                             },
                             "problems": {"type": "string"},
@@ -417,7 +412,7 @@ def _chat_phase(request, phase, messages, entry_id=None):
                 full_messages.append(
                     {"role": "assistant", "content": "(Hinweis: Daten bereits gespeichert)"}
                 )
-                break
+                return {"reply": "(Hinweis: Daten bereits gespeichert)"}
             submitted = True
             call = message.tool_calls[0]
             full_messages[-1] = {
@@ -690,7 +685,7 @@ def add_execution_json(request, entry_id):
     {
       "steps": ["str", ...],
       "time_usage": [{"goal": "str", "time": "HH:MM"}, ...],
-      "strategy_check": [{"strategy": "str", "used": bool, "useful": bool, "change": "str"}, ...],
+      "strategy_check": [{"strategy": "str", "used": bool, "useful": bool, "change": "str" (optional)}, ...],
       "problems": "str",
       "emotions": "str"
     }

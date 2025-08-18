@@ -173,7 +173,7 @@
             <p class="font-semibold mt-4">Strategiecheck</p>
             <ul class="mt-1 space-y-1 text-sm list-disc list-inside">
               {% for sc in entry.strategy_check %}
-              <li>{{ sc.strategy }}{% if sc.used is not None %} – {{ sc.used|yesno:'genutzt,nicht genutzt' }}{% endif %}{% if sc.useful is not None %}, {{ sc.useful|yesno:'sinnvoll,nicht sinnvoll' }}{% endif %}{% if sc.change %} – {{ sc.change }}{% endif %}</li>
+              <li>{{ sc.strategy }}{% if sc.used is not None %} – {{ sc.used|yesno:'genutzt,nicht genutzt' }}{% endif %}{% if sc.useful is not None %}, {{ sc.useful|yesno:'sinnvoll,nicht sinnvoll' }}{% endif %}{% if sc.change or sc.adaptation %} – {{ sc.change|default:sc.adaptation }}{% endif %}</li>
               {% endfor %}
             </ul>
             {% endif %}
@@ -210,7 +210,7 @@
               <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a7 7 0 00-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 002 2h4a2 2 0 002-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 00-7-7z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 21h6"/></svg>Strategie</p>
               <ul class="mt-1 space-y-1 text-sm">
                 {% for se in entry.strategy_evaluation %}
-                <li class="flex items-start"><svg class="w-4 h-4 mr-2 text-purple-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a7 7 0 00-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 002 2h4a2 2 0 002-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 00-7-7z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 21h6"/></svg><span>{{ se.strategy }}: {{ se.helpful }}{% if se.comment %} – {{ se.comment }}{% endif %} (erneut: {{ se.reuse }})</span></li>
+                <li class="flex items-start"><svg class="w-4 h-4 mr-2 text-purple-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a7 7 0 00-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 002 2h4a2 2 0 002-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 00-7-7z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 21h6"/></svg><span>{{ se.strategy }}: {{ se.helpful }}{% if se.comment or se.reason %} – {{ se.comment|default:se.reason }}{% endif %} (erneut: {{ se.reuse }})</span></li>
                 {% endfor %}
               </ul>
             </div>
