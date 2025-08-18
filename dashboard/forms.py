@@ -10,6 +10,7 @@ class ClassroomForm(forms.ModelForm):
             "group_type",
             "max_entries_per_day",
             "max_entries_per_week",
+            "max_planning_execution_minutes",
         ]
         widgets = {
             "name": forms.TextInput(
@@ -31,6 +32,12 @@ class ClassroomForm(forms.ModelForm):
             "max_entries_per_week": forms.Select(
                 attrs={
                     "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
+                }
+            ),
+            "max_planning_execution_minutes": forms.NumberInput(
+                attrs={
+                    "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
+                    "min": 1,
                 }
             ),
         }
@@ -109,7 +116,10 @@ class ClassOverallGoalForm(forms.Form):
 class ClassEntryLimitForm(forms.ModelForm):
     class Meta:
         model = Classroom
-        fields = ["max_entries_per_day", "max_entries_per_week"]
+        fields = [
+            "max_entries_per_day",
+            "max_entries_per_week",
+        ]
         widgets = {
             "max_entries_per_day": forms.Select(
                 attrs={
@@ -119,6 +129,20 @@ class ClassEntryLimitForm(forms.ModelForm):
             "max_entries_per_week": forms.Select(
                 attrs={
                     "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
+                }
+            ),
+        }
+
+
+class ClassTimeLimitForm(forms.ModelForm):
+    class Meta:
+        model = Classroom
+        fields = ["max_planning_execution_minutes"]
+        widgets = {
+            "max_planning_execution_minutes": forms.NumberInput(
+                attrs={
+                    "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
+                    "min": 1,
                 }
             ),
         }

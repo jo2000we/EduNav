@@ -37,7 +37,9 @@ def test_settings_accessible_for_teacher(client):
 def test_set_class_overall_goal_updates_students(client):
     user = User.objects.create_user(username="t1", password="pass")
     client.login(username="t1", password="pass")
-    classroom = Classroom.objects.create(teacher=user, name="Klasse A", group_type="CONTROL")
+    classroom = Classroom.objects.create(
+        teacher=user, name="Klasse A", group_type="CONTROL"
+    )
     s1 = Student.objects.create(classroom=classroom, pseudonym="S1")
     s2 = Student.objects.create(classroom=classroom, pseudonym="S2")
     response = client.post(
@@ -57,7 +59,9 @@ def test_set_class_overall_goal_updates_students(client):
 def test_set_class_overall_goal_prefills_form(client):
     user = User.objects.create_user(username="t1", password="pass")
     client.login(username="t1", password="pass")
-    classroom = Classroom.objects.create(teacher=user, name="Klasse A", group_type="CONTROL")
+    classroom = Classroom.objects.create(
+        teacher=user, name="Klasse A", group_type="CONTROL"
+    )
     Student.objects.create(
         classroom=classroom,
         pseudonym="S1",
@@ -82,15 +86,20 @@ def test_class_entry_limits_updates_classroom(client):
         group_type="CONTROL",
         max_entries_per_day=1,
         max_entries_per_week=2,
+        max_planning_execution_minutes=90,
     )
     response = client.post(
         reverse("class_entry_limits", args=[classroom.id]),
-        {"max_entries_per_day": 3, "max_entries_per_week": 4},
+        {
+            "max_entries_per_day": 3,
+            "max_entries_per_week": 4,
+        },
     )
     assert response.status_code == 302
     classroom.refresh_from_db()
     assert classroom.max_entries_per_day == 3
     assert classroom.max_entries_per_week == 4
+    assert classroom.max_planning_execution_minutes == 90
 
 
 @pytest.mark.django_db
@@ -103,6 +112,7 @@ def test_class_entry_limits_prefills_form(client):
         group_type="CONTROL",
         max_entries_per_day=5,
         max_entries_per_week=6,
+        max_planning_execution_minutes=70,
     )
     response = client.get(
         reverse("class_entry_limits", args=[classroom.id]),
@@ -110,3 +120,41 @@ def test_class_entry_limits_prefills_form(client):
     )
     assert b'value="5" selected' in response.content
     assert b'value="6" selected' in response.content
+
+
+@pytest.mark.django_db
+def test_class_time_limit_updates_classroom(client):
+    user = User.objects.create_user(username="t1", password="pass")
+    client.login(username="t1", password="pass")
+    classroom = Classroom.objects.create(
+        teacher=user,
+        name="Klasse A",
+        group_type="CONTROL",
+        max_planning_execution_minutes=90,
+    )
+    response = client.post(
+        reverse("class_time_limit", args=[classroom.id]),
+        {
+            "max_planning_execution_minutes": 80,
+        },
+    )
+    assert response.status_code == 302
+    classroom.refresh_from_db()
+    assert classroom.max_planning_execution_minutes == 80
+
+
+@pytest.mark.django_db
+def test_class_time_limit_prefills_form(client):
+    user = User.objects.create_user(username="t1", password="pass")
+    client.login(username="t1", password="pass")
+    classroom = Classroom.objects.create(
+        teacher=user,
+        name="Klasse A",
+        group_type="CONTROL",
+        max_planning_execution_minutes=70,
+    )
+    response = client.get(
+        reverse("class_time_limit", args=[classroom.id]),
+        HTTP_HX_REQUEST="true",
+    )
+    assert b'value="70"' in response.content
