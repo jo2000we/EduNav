@@ -3,7 +3,6 @@ from django.shortcuts import render, redirect, get_object_or_404
 from .models import Student, SRLEntry
 from .forms import (
     StudentLoginForm,
-    OverallGoalForm,
     PlanningForm,
     ExecutionForm,
     ReflectionForm,
@@ -48,22 +47,12 @@ def student_dashboard(request):
     context = {
         "student": student,
         "entries": entries,
-        "overall_goal_form": OverallGoalForm(instance=student),
         "planning_form": PlanningForm(),
         "execution_form": ExecutionForm(),
         "reflection_form": ReflectionForm(),
     }
     return render(request, "dashboard/student_dashboard.html", context)
 
-
-@student_required
-def update_overall_goal(request):
-    student = Student.objects.get(id=request.session["student_id"])
-    if request.method == "POST":
-        form = OverallGoalForm(request.POST, instance=student)
-        if form.is_valid():
-            form.save()
-    return redirect("student_dashboard")
 
 
 @student_required
