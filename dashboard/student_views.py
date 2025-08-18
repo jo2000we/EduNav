@@ -166,9 +166,8 @@ def add_execution(request, entry_id):
         form = ExecutionForm(request.POST, instance=entry)
         if form.is_valid():
             usage_minutes = _total_minutes(form.cleaned_data.get("time_usage", []))
-            planning_minutes = _total_minutes(entry.time_planning)
             limit = student.classroom.max_planning_execution_minutes
-            if planning_minutes + usage_minutes > limit:
+            if usage_minutes > limit:
                 messages.error(
                     request,
                     f"Die Gesamtzeit darf {limit} Minuten nicht überschreiten.",
