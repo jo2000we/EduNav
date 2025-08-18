@@ -2,3 +2,4 @@ django~=4.2.23
 pytest-django==4.11.1
 requests
 openpyxl
+openai>=1.3.5

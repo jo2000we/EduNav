@@ -39,7 +39,7 @@
     {% if entry.strategy_check %}
     <p><strong>Strategie-Check:</strong>
       {% for sc in entry.strategy_check %}
-        {{ sc.strategy }}{% if sc.used is not None %} – {{ sc.used|yesno:'genutzt,nicht genutzt' }}{% endif %}{% if sc.useful is not None %}, {{ sc.useful|yesno:'sinnvoll,nicht sinnvoll' }}{% endif %}{% if sc.adaptation %} – {{ sc.adaptation }}{% endif %}{% if not forloop.last %}; {% endif %}
+        {{ sc.strategy }}{% if sc.used is not None %} – {{ sc.used|yesno:'genutzt,nicht genutzt' }}{% endif %}{% if sc.useful is not None %}, {{ sc.useful|yesno:'sinnvoll,nicht sinnvoll' }}{% endif %}{% if sc.change or sc.adaptation %} – {{ sc.change|default:sc.adaptation }}{% endif %}{% if not forloop.last %}; {% endif %}
       {% endfor %}
     </p>
     {% endif %}
@@ -52,7 +52,13 @@
       {% endfor %}
     </p>
     {% endif %}
-    {% if entry.strategy_evaluation %}<p><strong>Strategie-Bewertung:</strong> {{ entry.strategy_evaluation|join:", " }}</p>{% endif %}
+    {% if entry.strategy_evaluation %}
+    <p><strong>Strategie-Bewertung:</strong>
+      {% for se in entry.strategy_evaluation %}
+        {{ se.strategy }}: {{ se.helpful }}{% if se.comment or se.reason %} – {{ se.comment|default:se.reason }}{% endif %} (erneut: {{ se.reuse }}){% if not forloop.last %}; {% endif %}
+      {% endfor %}
+    </p>
+    {% endif %}
     {% if entry.learned_subject %}<p><strong>Gelerntes (Inhaltlich):</strong> {{ entry.learned_subject }}</p>{% endif %}
     {% if entry.learned_work %}<p><strong>Gelerntes (Arbeitsweise):</strong> {{ entry.learned_work }}</p>{% endif %}
     {% if entry.planning_realistic %}<p><strong>War die Planung realistisch?</strong> {{ entry.planning_realistic }}</p>{% endif %}

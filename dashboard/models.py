@@ -133,6 +133,8 @@ class AppSettings(models.Model):
     """Singleton model to store application wide configuration."""
 
     openai_api_key = models.CharField(max_length=255, blank=True, default="")
+    openai_model = models.CharField(max_length=100, blank=True, default="")
+    openai_temperature = models.FloatField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     @classmethod

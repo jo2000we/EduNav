@@ -56,5 +56,5 @@ urlpatterns = [
         name="classroom_visualization",
     ),
     path("settings/", views.settings_view, name="settings"),
-    path("settings/openai-key/", views.update_openai_key, name="update_openai_key"),
+    path("settings/openai/", views.update_openai_settings, name="update_openai_settings"),
 ]

@@ -234,11 +234,31 @@ def settings_view(request):
 
 @login_required
 @require_POST
-def update_openai_key(request):
+def update_openai_settings(request):
     data = json.loads(request.body.decode("utf-8"))
-    key = data.get("openai_api_key", "")
     settings = AppSettings.load()
+    key = data.get("openai_api_key", "")
+    model = data.get("openai_model", "")
+    temp = data.get("openai_temperature")
     settings.openai_api_key = key
+    settings.openai_model = model
+    try:
+        settings.openai_temperature = (
+            float(temp) if temp not in (None, "") else None
+        )
+    except (TypeError, ValueError):
+        return JsonResponse({"error": "invalid temperature"}, status=400)
     settings.save()
     valid = validate_openai_key(key)
-    return JsonResponse({"valid": valid})
+    model_valid = True
+    if model and valid:
+        try:
+            resp = requests.get(
+                f"https://api.openai.com/v1/models/{model}",
+                headers={"Authorization": f"Bearer {key}"},
+                timeout=5,
+            )
+            model_valid = resp.status_code == 200
+        except requests.RequestException:
+            model_valid = False
+    return JsonResponse({"valid": valid and model_valid, "model_valid": model_valid})

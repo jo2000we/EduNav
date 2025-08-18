@@ -11,6 +11,27 @@ from openpyxl import Workbook
 from .models import Classroom, Student
 
 
+def _minutes(hhmm):
+    try:
+        h, m = map(int, (hhmm or "").split(":"))
+        return h * 60 + m
+    except Exception:
+        return None
+
+
+def _time_delta(entry):
+    p = {i.get("goal"): _minutes(i.get("time")) for i in entry.time_planning or []}
+    a = {i.get("goal"): _minutes(i.get("time")) for i in entry.time_usage or []}
+    keys = set(p) | set(a)
+    result = []
+    for k in keys:
+        plan = p.get(k)
+        act = a.get(k)
+        delta = act - plan if plan is not None and act is not None else None
+        result.append({"Ziel": k, "Plan": plan, "Ist": act, "Delta": delta})
+    return result
+
+
 @login_required
 def export_classroom_data(request, classroom_id):
     """Placeholder view for exporting classroom data."""
@@ -35,7 +56,7 @@ def _entry_nested(entry):
                 "Strategie": item.get("strategy"),
                 "Genutzt": item.get("used"),
                 "Sinnvoll": item.get("useful"),
-                "Anpassung": item.get("adaptation"),
+                "Anpassung": item.get("change") or item.get("adaptation"),
             }
             for item in lst
         ]
@@ -78,6 +99,7 @@ def _entry_nested(entry):
             "Motivation verbessern": entry.motivation_improve,
             "Nächste Lernphase": entry.next_phase,
             "Strategie-Ausblick": entry.strategy_outlook,
+            "Zeit-Delta": _time_delta(entry),
         },
     }
 
@@ -105,8 +127,9 @@ def _entry_flat(entry):
                 txt += f" – {'genutzt' if item['used'] else 'nicht genutzt'}"
             if item.get("useful") is not None:
                 txt += f", {'sinnvoll' if item['useful'] else 'nicht sinnvoll'}"
-            if item.get("adaptation"):
-                txt += f" – {item['adaptation']}"
+            ch = item.get("change") or item.get("adaptation")
+            if ch:
+                txt += f" – {ch}"
             parts.append(txt)
         return "; ".join(parts)
 
@@ -115,6 +138,30 @@ def _entry_flat(entry):
             f"{item.get('goal')}: {item.get('achievement')}{' – ' + item.get('comment') if item.get('comment') else ''}"
             for item in lst
         )
+
+    def _se(lst):
+        parts = []
+        for item in lst:
+            txt = item.get("strategy", "")
+            hv = item.get("helpful")
+            if hv is not None:
+                txt += f": {hv}"
+            comment = item.get("comment") or item.get("reason")
+            if comment:
+                txt += f" – {comment}"
+            if "reuse" in item:
+                txt += f" (erneut: {item['reuse']})"
+            parts.append(txt)
+        return "; ".join(parts)
+
+    def _td(lst):
+        parts = []
+        for d in lst:
+            delta = d.get('Delta')
+            parts.append(
+                f"{d['Ziel']}: {delta} Min" if delta is not None else f"{d['Ziel']}:"
+            )
+        return "; ".join(parts)
 
     return {
         "Datum": str(entry.session_date),
@@ -130,7 +177,7 @@ def _entry_flat(entry):
         "Probleme": entry.problems,
         "Emotionen": entry.emotions,
         "Zielerreichung": _ga(entry.goal_achievement),
-        "Strategie-Bewertung": _join(entry.strategy_evaluation),
+        "Strategie-Bewertung": _se(entry.strategy_evaluation),
         "Gelerntes (Inhaltlich)": entry.learned_subject,
         "Gelerntes (Arbeitsweise)": entry.learned_work,
         "War die Planung realistisch?": entry.planning_realistic,
@@ -139,6 +186,7 @@ def _entry_flat(entry):
         "Motivation verbessern": entry.motivation_improve,
         "Nächste Lernphase": entry.next_phase,
         "Strategie-Ausblick": entry.strategy_outlook,
+        "Zeit-Delta": _td(_time_delta(entry)),
     }
 
 
@@ -200,6 +248,7 @@ def export_student_data(request, classroom_id, student_id):
         "Motivation verbessern",
         "Nächste Lernphase",
         "Strategie-Ausblick",
+        "Zeit-Delta",
     ]
 
     rows = []

@@ -1,0 +1,398 @@
+{% extends "dashboard/base.html" %}
+{% load form_tags %}
+
+{% block content %}
+
+<style>
+  .timeline-container { position: relative; padding-bottom: 50vh; }
+  .timeline-container::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #e5e7eb;
+  }
+  .timeline-entry { position: relative; padding-top: 2rem; }
+  .timeline-entry::before {
+    display: none;
+  }
+  .timeline-card {
+    transition: transform 0.3s, opacity 0.3s, max-width 0.3s;
+    max-width: 24rem;
+  }
+  .timeline-card.inactive {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+  .timeline-card.active {
+    max-width: 64rem;
+  }
+  @keyframes zoomIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .modal-content {
+    animation: zoomIn 0.3s ease;
+    border: 1px solid #e5e7eb;
+  }
+  .modal-form .section {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .modal-form .section:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  .timeline-entry.overall-goal { padding-top: 0; }
+  .timeline-entry.overall-goal::before,
+  .timeline-button::before {
+    display: none;
+  }
+</style>
+{% if messages %}
+<div class="mb-4">
+  {% for message in messages %}
+  <div class="p-2 mb-2 text-sm text-red-800 bg-red-100 rounded-lg">{{ message }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div id="timeline" class="timeline-container space-y-16 -mt-4">
+  {% if student.overall_goal %}
+  <div class="timeline-entry overall-goal" data-entry="overall-goal">
+    <div class="timeline-card inactive bg-white p-6 rounded-lg shadow mx-auto w-full overall-goal-card">
+      <h4 class="font-bold text-center text-lg mb-4">Gesamtziel bis zum {{ student.overall_goal_due_date }}</h4>
+      <div class="inactive-view text-sm space-y-1">
+        <p>{{ student.overall_goal }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="timeline-button relative h-16 flex items-center justify-center">
+    <button onclick="openChat('planning')" class="text-white px-4 py-2 rounded {% if can_create_entry %}bg-green-500{% else %}bg-gray-400 cursor-not-allowed{% endif %}" {% if not can_create_entry %}disabled{% endif %}>Neues Tagesziel</button>
+  </div>
+  {% endif %}
+  {% for entry in entries %}
+  <div class="timeline-entry" data-entry="{{ entry.id }}">
+    <div class="timeline-card inactive bg-white p-6 rounded-lg shadow mx-auto w-full">
+      <h4 class="font-bold text-center text-lg mb-4">{{ entry.session_date }}</h4>
+      <div class="inactive-view text-sm space-y-1">
+        {% if entry.goals %}
+        <p><span class="font-semibold">Ziele:</span> {{ entry.goals|join:", " }}</p>
+        {% endif %}
+        {% if entry.goal_achievement %}
+        <p class="text-green-600">✓ Reflexion abgeschlossen</p>
+        {% endif %}
+      </div>
+      <div class="active-view hidden grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="planning-section space-y-4">
+          <h5 class="font-semibold mb-2">Planung</h5>
+          {% if entry.goals %}
+          <div>
+            <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>Ziele</p>
+            <ul class="mt-1 space-y-1">
+              {% for g in entry.goals %}
+              <li class="flex items-start"><svg class="w-3 h-3 mr-2 text-gray-500 flex-shrink-0" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4"/></svg><span>{{ g }}</span></li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+          {% if entry.priorities %}
+          <div>
+            <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5-5 5M6 7l5 5-5 5"/></svg>Prioritäten</p>
+            <p class="mt-1 text-sm">
+              {% for p in entry.priorities %}
+                {% if p.priority %}<span class="underline">{{ p.goal }}</span>{% else %}{{ p.goal }}{% endif %}{% if not forloop.last %} &rarr; {% endif %}
+              {% endfor %}
+            </p>
+          </div>
+          {% endif %}
+          {% if entry.strategies %}
+          <div>
+            <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a7 7 0 00-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 002 2h4a2 2 0 002-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 00-7-7z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 21h6"/></svg>Strategien</p>
+            <div class="flex flex-wrap gap-2 mt-1">
+              {% for s in entry.strategies %}
+              <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">{{ s }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+          {% if entry.resources %}
+          <div>
+            <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12l4-4m-4 4l4 4"/></svg>Ressourcen</p>
+            <div class="flex flex-wrap gap-2 mt-1">
+              {% for r in entry.resources %}
+              <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">{{ r }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+          {% if entry.time_planning %}
+          <div>
+            <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3"/></svg>Zeitplanung</p>
+            <ul class="mt-1 space-y-1 text-sm">
+              {% for t in entry.time_planning %}
+              <li class="flex justify-between bg-gray-50 px-2 py-1 rounded"><span>{{ t.goal }}</span><span class="text-gray-600">{{ t.time }}</span></li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+          {% if entry.expectations %}
+          <div>
+            <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>Erwartungen</p>
+            <ul class="mt-1 space-y-1 text-sm">
+              {% for e in entry.expectations %}
+              <li class="flex items-start"><svg class="w-3 h-3 mr-2 text-gray-500 flex-shrink-0" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4"/></svg><span>{{ e.goal }}{% if e.indicator %}: {{ e.indicator }}{% endif %}</span></li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+        </div>
+        <div class="execution-section space-y-4">
+          <h5 class="font-semibold mb-2 text-center md:text-left">Durchführung</h5>
+          {% if entry.steps %}
+          <div class="{% if not entry.emotions or not entry.time_usage %}border border-red-500 rounded p-2{% endif %}">
+            <ul class="space-y-1 text-sm">
+              {% for s in entry.steps %}
+              <li class="flex items-start"><svg class="w-4 h-4 mr-2 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>{{ s }}</span></li>
+              {% endfor %}
+            </ul>
+            {% if entry.time_usage %}
+            <p class="font-semibold mt-4">Zeitnutzung</p>
+            <ul class="mt-1 space-y-1 text-sm">
+              {% for t in entry.time_usage %}
+              <li class="flex justify-between bg-gray-50 px-2 py-1 rounded"><span>{{ t.goal }}</span><span class="text-gray-600">{{ t.time }}</span></li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-red-500 text-sm mt-2">Zeitangaben fehlen</p>
+            {% endif %}
+            {% if entry.strategy_check %}
+            <p class="font-semibold mt-4">Strategiecheck</p>
+            <ul class="mt-1 space-y-1 text-sm list-disc list-inside">
+              {% for sc in entry.strategy_check %}
+              <li>{{ sc.strategy }}{% if sc.used is not None %} – {{ sc.used|yesno:'genutzt,nicht genutzt' }}{% endif %}{% if sc.useful is not None %}, {{ sc.useful|yesno:'sinnvoll,nicht sinnvoll' }}{% endif %}{% if sc.change or sc.adaptation %} – {{ sc.change|default:sc.adaptation }}{% endif %}</li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+            {% if entry.problems %}<p class="mt-4"><span class="font-semibold">Probleme:</span> {{ entry.problems }}</p>{% endif %}
+            {% if entry.emotions %}<p class="mt-2"><span class="font-semibold">Emotionen:</span> {{ entry.emotions }}</p>{% else %}<p class="text-red-500 text-sm mt-2">Emotionen fehlen</p>{% endif %}
+            {% if not entry.goal_achievement %}
+            <div class="mt-4 text-center">
+              <button onclick="openChat('execution', {{ entry.id }})" class="bg-blue-500 text-white px-3 py-1 rounded">Aktualisieren</button>
+            </div>
+            {% endif %}
+          </div>
+          {% else %}
+          {% if not entry.goal_achievement %}
+          <div class="flex justify-center">
+            <button onclick="openChat('execution', {{ entry.id }})" class="w-24 h-24 rounded-full bg-blue-500 text-white text-sm flex items-center justify-center text-center">Durchführung<br>protokollieren</button>
+          </div>
+          {% endif %}
+          {% endif %}
+        </div>
+        <div class="reflection-section space-y-4">
+          <h5 class="font-semibold mb-2 text-center md:text-left">Reflexion</h5>
+          {% if entry.goal_achievement %}
+          <div>
+            <div class="mt-4">
+              <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>Zielerreichung</p>
+              <ul class="mt-1 space-y-1 text-sm">
+                {% for ga in entry.goal_achievement %}
+                <li class="flex items-start"><svg class="w-4 h-4 mr-2 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>{{ ga.goal }}: {{ ga.achievement }}{% if ga.comment %} – {{ ga.comment }}{% endif %}</span></li>
+                {% endfor %}
+              </ul>
+            </div>
+            {% if entry.strategy_evaluation %}
+            <div class="mt-4">
+              <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a7 7 0 00-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 002 2h4a2 2 0 002-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 00-7-7z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 21h6"/></svg>Strategie</p>
+              <ul class="mt-1 space-y-1 text-sm">
+                {% for se in entry.strategy_evaluation %}
+                <li class="flex items-start"><svg class="w-4 h-4 mr-2 text-purple-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a7 7 0 00-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 002 2h4a2 2 0 002-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 00-7-7z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 21h6"/></svg><span>{{ se.strategy }}: {{ se.helpful }}{% if se.comment or se.reason %} – {{ se.comment|default:se.reason }}{% endif %} (erneut: {{ se.reuse }})</span></li>
+                {% endfor %}
+              </ul>
+            </div>
+            {% endif %}
+            {% if entry.learned_subject or entry.learned_work %}
+            <div class="mt-4">
+              <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 14l6.16-3.422A12.083 12.083 0 0118 20.944V21l-6-3-6 3v-.056a12.083 12.083 0 01-.16-10.367L12 14z"/></svg>Selbsteinschätzung</p>
+              {% if entry.learned_subject %}<p class="mt-1 text-sm">Fachlich: {{ entry.learned_subject }}</p>{% endif %}
+              {% if entry.learned_work %}<p class="mt-1 text-sm">Arbeitsweise: {{ entry.learned_work }}</p>{% endif %}
+            </div>
+            {% endif %}
+            {% if entry.planning_realistic or entry.planning_deviations %}
+            <div class="mt-4">
+              <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3"/></svg>Zeitmanagement</p>
+              {% if entry.planning_realistic %}<p class="mt-1 text-sm">Planung realistisch: {{ entry.planning_realistic }}</p>{% endif %}
+              {% if entry.planning_deviations %}<p class="mt-1 text-sm">Abweichungen: {{ entry.planning_deviations }}</p>{% endif %}
+            </div>
+            {% endif %}
+            {% if entry.motivation_rating or entry.motivation_improve %}
+            <div class="mt-4">
+              <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1 text-red-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 3.99 4 6.5 4c1.74 0 3.41 1.01 4.13 2.44h.74C13.09 5.01 14.76 4 16.5 4 19.01 4 21 6 21 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>Emotionen/Motivation</p>
+              {% if entry.motivation_rating %}<p class="mt-1 text-sm">Motivation: {{ entry.motivation_rating }}</p>{% endif %}
+              {% if entry.motivation_improve %}<p class="mt-1 text-sm">Stärken: {{ entry.motivation_improve }}</p>{% endif %}
+            </div>
+            {% endif %}
+            {% if entry.next_phase or entry.strategy_outlook %}
+            <div class="mt-4">
+              <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5-5 5M6 7l5 5-5 5"/></svg>Ausblick</p>
+              {% if entry.next_phase %}<p class="mt-1 text-sm">Nächste Phase: {{ entry.next_phase }}</p>{% endif %}
+              {% if entry.strategy_outlook %}<p class="mt-1 text-sm">Strategien: {{ entry.strategy_outlook }}</p>{% endif %}
+            </div>
+            {% endif %}
+          </div>
+          {% else %}
+          <div class="flex flex-col items-center">
+            {% if entry.steps and entry.time_usage and entry.emotions %}
+            <button onclick="openChat('reflection', {{ entry.id }})" class="w-24 h-24 rounded-full bg-red-500 text-white text-sm flex items-center justify-center text-center">Reflexion<br>starten</button>
+            {% else %}
+            <button disabled class="w-24 h-24 rounded-full bg-gray-300 text-gray-600 text-sm flex items-center justify-center text-center cursor-not-allowed">Reflexion<br>starten</button>
+            <p class="mt-2 text-xs text-gray-500 text-center">Reflexion erst nach der Durchführung möglich</p>
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+{% endfor %}
+
+</div>
+
+<!-- Chat windows for experimental group -->
+<div id="planning-chat" class="hidden fixed top-0 left-0 right-0 z-50 flex justify-center items-center w-full h-full bg-gray-900 bg-opacity-50">
+  <div class="bg-white p-4 rounded shadow w-full max-w-2xl">
+    <div id="planning-log" class="h-80 overflow-y-auto mb-2 text-sm"></div>
+    <form onsubmit="submitChat(event,'planning')">
+      <input id="planning-input" class="border w-full p-2" placeholder="Antwort..." autocomplete="off" />
+      <div class="mt-2 flex justify-end">
+        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Senden</button>
+        <button type="button" class="ml-2 bg-gray-300 px-4 py-2 rounded" onclick="closeChat('planning')">Schließen</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="execution-chat" class="hidden fixed top-0 left-0 right-0 z-50 flex justify-center items-center w-full h-full bg-gray-900 bg-opacity-50">
+  <div class="bg-white p-4 rounded shadow w-full max-w-2xl">
+    <div id="execution-log" class="h-80 overflow-y-auto mb-2 text-sm"></div>
+    <form onsubmit="submitChat(event,'execution')">
+      <input id="execution-input" class="border w-full p-2" placeholder="Antwort..." autocomplete="off" />
+      <div class="mt-2 flex justify-end">
+        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Senden</button>
+        <button type="button" class="ml-2 bg-gray-300 px-4 py-2 rounded" onclick="closeChat('execution')">Schließen</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="reflection-chat" class="hidden fixed top-0 left-0 right-0 z-50 flex justify-center items-center w-full h-full bg-gray-900 bg-opacity-50">
+  <div class="bg-white p-4 rounded shadow w-full max-w-2xl">
+    <div id="reflection-log" class="h-80 overflow-y-auto mb-2 text-sm"></div>
+    <form onsubmit="submitChat(event,'reflection')">
+      <input id="reflection-input" class="border w-full p-2" placeholder="Antwort..." autocomplete="off" />
+      <div class="mt-2 flex justify-end">
+        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Senden</button>
+        <button type="button" class="ml-2 bg-gray-300 px-4 py-2 rounded" onclick="closeChat('reflection')">Schließen</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+let currentEntryId = null;
+const chatHistory = {planning: [], execution: [], reflection: []};
+
+const urls = {
+  planning: "{% url 'chat_planning' %}",
+  execution: id => "{% url 'chat_execution' 0 %}".replace("/0/", `/${id}/`),
+  reflection: id => "{% url 'chat_reflection' 0 %}".replace("/0/", `/${id}/`)
+};
+
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+function openChat(type, entryId=null) {
+  currentEntryId = entryId;
+  document.getElementById(type + '-chat').classList.remove('hidden');
+  if (chatHistory[type].length === 0) {
+    sendMessage(type, null);
+  }
+}
+
+function closeChat(type) {
+  document.getElementById(type + '-chat').classList.add('hidden');
+}
+
+function submitChat(event, type) {
+  event.preventDefault();
+  const input = document.getElementById(type + '-input');
+  const message = input.value.trim();
+  if (!message) return;
+  sendMessage(type, message);
+  input.value = '';
+}
+
+function sendMessage(type, message) {
+  if (message) chatHistory[type].push({role: 'user', content: message});
+  const url = type === 'planning'
+    ? urls.planning
+    : type === 'execution'
+      ? urls.execution(currentEntryId)
+      : urls.reflection(currentEntryId);
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCookie('csrftoken'),
+    },
+    body: JSON.stringify({messages: chatHistory[type]})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) {
+      chatHistory[type].push({role: 'assistant', content: data.error});
+    } else {
+      chatHistory[type].push({role: 'assistant', content: data.reply});
+      if (data.entry_id !== undefined) {
+        currentEntryId = data.entry_id;
+      }
+    }
+    renderChat(type);
+  })
+  .catch(() => {
+    chatHistory[type].push({role: 'assistant', content: '(Netzwerkfehler – bitte erneut senden)'});
+    renderChat(type);
+  });
+}
+
+function renderChat(type) {
+  const log = document.getElementById(type + '-log');
+  log.innerHTML = '';
+  chatHistory[type].forEach(msg => {
+    const div = document.createElement('div');
+    div.className = msg.role === 'assistant' ? 'text-blue-700 mb-2' : 'text-gray-800 mb-2 text-right';
+    div.textContent = msg.content;
+    log.appendChild(div);
+  });
+  log.scrollTop = log.scrollHeight;
+}
+</script>
+
+{% endblock %}
