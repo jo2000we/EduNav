@@ -11,6 +11,26 @@ from openpyxl import Workbook
 from .models import Classroom, Student
 
 
+def _minutes(hhmm):
+    h, m = map(int, hhmm.split(":"))
+    return h * 60 + m
+
+
+def _time_delta(entry):
+    p = {i.get("goal"): _minutes(i.get("time", "0:0")) for i in entry.time_planning or []}
+    a = {i.get("goal"): _minutes(i.get("time", "0:0")) for i in entry.time_usage or []}
+    keys = set(p) | set(a)
+    return [
+        {
+            "Ziel": k,
+            "Plan": p.get(k, 0),
+            "Ist": a.get(k, 0),
+            "Delta": a.get(k, 0) - p.get(k, 0),
+        }
+        for k in keys
+    ]
+
+
 @login_required
 def export_classroom_data(request, classroom_id):
     """Placeholder view for exporting classroom data."""
@@ -78,6 +98,7 @@ def _entry_nested(entry):
             "Motivation verbessern": entry.motivation_improve,
             "Nächste Lernphase": entry.next_phase,
             "Strategie-Ausblick": entry.strategy_outlook,
+            "Zeit-Delta": _time_delta(entry),
         },
     }
 
@@ -130,6 +151,11 @@ def _entry_flat(entry):
             parts.append(txt)
         return "; ".join(parts)
 
+    def _td(lst):
+        return "; ".join(
+            f"{d['Ziel']}: {d['Delta']} Min" for d in lst
+        )
+
     return {
         "Datum": str(entry.session_date),
         "Ziele": _join(entry.goals),
@@ -153,6 +179,7 @@ def _entry_flat(entry):
         "Motivation verbessern": entry.motivation_improve,
         "Nächste Lernphase": entry.next_phase,
         "Strategie-Ausblick": entry.strategy_outlook,
+        "Zeit-Delta": _td(_time_delta(entry)),
     }
 
 
@@ -214,6 +241,7 @@ def export_student_data(request, classroom_id, student_id):
         "Motivation verbessern",
         "Nächste Lernphase",
         "Strategie-Ausblick",
+        "Zeit-Delta",
     ]
 
     rows = []

@@ -41,9 +41,20 @@ def _normalize_time(t):
     if not isinstance(t, str) or not TIME_RE.match(t):
         raise ValueError("HH:MM erwartet")
     h, m = map(int, t.split(":"))
-    if h < 0 or m < 0 or h > 23 or m > 59:
+    if h < 0 or m < 0 or m > 59:
         raise ValueError("Ungültige Zeit")
     return f"{h:02d}:{m:02d}"
+
+
+def _clean_list(lst):
+    seen = set()
+    out = []
+    for s in lst or []:
+        x = " ".join((s or "").split())
+        if x and x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out
 
 
 def _student_diary_json(student):
@@ -347,9 +358,15 @@ def _chat_phase(request, phase, messages, entry_id=None):
                                     "type": "object",
                                     "properties": {
                                         "strategy": {"type": "string"},
-                                        "helpful": {"type": "boolean"},
+                                        "helpful": {
+                                            "type": "string",
+                                            "enum": ["ja", "teilweise", "nein"],
+                                        },
                                         "comment": {"type": "string"},
-                                        "reuse": {"type": "boolean"},
+                                        "reuse": {
+                                            "type": "string",
+                                            "enum": ["ja", "nein", "vielleicht"],
+                                        },
                                     },
                                     "required": ["strategy", "helpful", "comment", "reuse"],
                                 },
@@ -402,26 +419,26 @@ def _chat_phase(request, phase, messages, entry_id=None):
                 )
                 break
             submitted = True
+            call = message.tool_calls[0]
             full_messages[-1] = {
                 "role": message.role,
-                "tool_calls": message.tool_calls,
+                "tool_calls": [call],
             }
-            for call in message.tool_calls:
-                args = json.loads(call.function.arguments or "{}")
-                api_resp = _call_phase_api(phase, request, args, entry_id)
-                tool_payload = {
-                    "status": getattr(api_resp, "status_code", 0),
-                    "body": api_resp.content.decode(errors="replace"),
-                    "content_type": getattr(api_resp, "headers", {}).get("Content-Type", ""),
+            args = json.loads(call.function.arguments or "{}")
+            api_resp = _call_phase_api(phase, request, args, entry_id)
+            tool_payload = {
+                "status": getattr(api_resp, "status_code", 0),
+                "body": api_resp.content.decode(errors="replace"),
+                "content_type": getattr(api_resp, "headers", {}).get("Content-Type", ""),
+            }
+            full_messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": call.id,
+                    "name": call.function.name,
+                    "content": json.dumps(tool_payload, ensure_ascii=False),
                 }
-                full_messages.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": call.id,
-                        "name": call.function.name,
-                        "content": json.dumps(tool_payload, ensure_ascii=False),
-                    }
-                )
+            )
             continue
         return {"reply": message.content or ""}
     return {"error": "Conversation loop limit reached"}
@@ -615,6 +632,19 @@ def create_entry_json(request):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
+    for key in ["goals", "strategies", "resources"]:
+        payload[key] = _clean_list(payload.get(key, []))
+
+    for item in payload.get("priorities", []):
+        item["goal"] = " ".join((item.get("goal", "")).split())
+
+    for item in payload.get("time_planning", []):
+        item["goal"] = " ".join((item.get("goal", "")).split())
+
+    for item in payload.get("expectations", []):
+        item["goal"] = " ".join((item.get("goal", "")).split())
+        item["indicator"] = " ".join((item.get("indicator", "")).split())
+
     normalized = []
     for idx, item in enumerate(payload.get("time_planning", [])):
         try:
@@ -713,7 +743,7 @@ def add_reflection_json(request, entry_id):
     Expected JSON format:
     {
       "goal_achievement": [{"achievement": "str", "comment": "str"}, ...],
-      "strategy_evaluation": [{"strategy": "str", "helpful": bool, "comment": "str", "reuse": bool}, ...],
+      "strategy_evaluation": [{"strategy": "str", "helpful": "ja|teilweise|nein", "comment": "str", "reuse": "ja|nein|vielleicht"}, ...],
       "learned_subject": "str",
       "learned_work": "str",
       "planning_realistic": "str",
@@ -732,6 +762,10 @@ def add_reflection_json(request, entry_id):
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
     for se in payload.get("strategy_evaluation", []):
+        if isinstance(se.get("helpful"), bool):
+            se["helpful"] = "ja" if se["helpful"] else "nein"
+        if isinstance(se.get("reuse"), bool):
+            se["reuse"] = "ja" if se["reuse"] else "nein"
         if "reason" in se and "comment" not in se:
             se["comment"] = se.pop("reason")
     form_data = {
