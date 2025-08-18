@@ -1,9 +1,13 @@
 from functools import wraps
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
+from django.http import HttpResponse
+from django.urls import reverse
 from .models import Student, SRLEntry
 from .forms import (
-    StudentLoginForm,
+    PseudoForm,
+    PasswordLoginForm,
+    SetPasswordForm,
     PlanningForm,
     ExecutionForm,
     ReflectionForm,
@@ -25,19 +29,65 @@ def _total_minutes(items):
 
 
 def student_login(request):
-    if request.method == "POST":
-        form = StudentLoginForm(request.POST)
-        if form.is_valid():
-            pseudonym = form.cleaned_data["pseudonym"]
-            try:
-                student = Student.objects.get(pseudonym=pseudonym)
-                request.session["student_id"] = student.id
-                return redirect("student_dashboard")
-            except Student.DoesNotExist:
-                form.add_error("pseudonym", "Unbekanntes Pseudonym")
-    else:
-        form = StudentLoginForm()
+    form = PseudoForm()
     return render(request, "dashboard/student_login.html", {"form": form})
+
+
+def student_login_step(request):
+    if request.method != "POST":
+        return redirect("student_login")
+
+    pseudonym = request.POST.get("pseudonym", "").strip()
+    student = Student.objects.filter(pseudonym=pseudonym).first()
+    if not student:
+        return HttpResponse(
+            '<div class="text-red-600 mt-2">Unbekanntes Pseudonym</div>',
+            status=400,
+        )
+
+    if "password1" in request.POST:
+        form = SetPasswordForm(request.POST)
+        if form.is_valid():
+            student.set_password(form.cleaned_data["password1"])
+            student.save()
+            request.session["student_id"] = student.id
+            response = HttpResponse()
+            response["HX-Redirect"] = reverse("student_dashboard")
+            return response
+        return render(
+            request,
+            "dashboard/partials/password_set_form.html",
+            {"form": form, "pseudonym": pseudonym},
+            status=400,
+        )
+
+    if "password" in request.POST:
+        form = PasswordLoginForm(request.POST)
+        if form.is_valid() and student.check_password(form.cleaned_data["password"]):
+            request.session["student_id"] = student.id
+            response = HttpResponse()
+            response["HX-Redirect"] = reverse("student_dashboard")
+            return response
+        if form.is_valid():
+            form.add_error("password", "Falsches Passwort")
+        return render(
+            request,
+            "dashboard/partials/password_enter_form.html",
+            {"form": form, "pseudonym": pseudonym},
+            status=400,
+        )
+
+    if student.password:
+        form = PasswordLoginForm()
+        template = "dashboard/partials/password_enter_form.html"
+    else:
+        form = SetPasswordForm()
+        template = "dashboard/partials/password_set_form.html"
+    return render(
+        request,
+        template,
+        {"form": form, "pseudonym": pseudonym},
+    )
 
 
 def student_logout(request):

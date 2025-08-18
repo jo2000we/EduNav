@@ -158,3 +158,20 @@ def test_class_time_limit_prefills_form(client):
         HTTP_HX_REQUEST="true",
     )
     assert b'value="70"' in response.content
+
+
+@pytest.mark.django_db
+def test_student_reset_password_view(client):
+    user = User.objects.create_user(username="t1", password="pass")
+    client.login(username="t1", password="pass")
+    classroom = Classroom.objects.create(teacher=user, name="Klasse A", group_type="CONTROL")
+    student = Student.objects.create(classroom=classroom, pseudonym="S1")
+    student.set_password("secret")
+    student.save()
+    response = client.post(
+        reverse("student_reset_password", args=[classroom.id, student.id]),
+        HTTP_HX_REQUEST="true",
+    )
+    assert response.status_code == 200
+    student.refresh_from_db()
+    assert student.password == ""

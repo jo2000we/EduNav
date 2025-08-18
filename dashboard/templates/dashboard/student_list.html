@@ -8,10 +8,16 @@
     {% for student in students %}
     <li class="py-2 flex justify-between items-center">
         <a href="{% url 'student_detail' classroom.id student.id %}" class="text-blue-600 hover:underline">{{ student.pseudonym }}</a>
-        <form hx-post="{% url 'student_delete' classroom.id student.id %}" hx-target="#student-modal-content" hx-swap="innerHTML" class="ml-4">
-            {% csrf_token %}
-            <button type="submit" class="text-red-600 hover:underline text-sm">Löschen</button>
-        </form>
+        <div class="flex space-x-2">
+            <form hx-post="{% url 'student_reset_password' classroom.id student.id %}" hx-target="#student-modal-content" hx-swap="innerHTML">
+                {% csrf_token %}
+                <button type="submit" class="text-yellow-600 hover:underline text-sm">Passwort zurücksetzen</button>
+            </form>
+            <form hx-post="{% url 'student_delete' classroom.id student.id %}" hx-target="#student-modal-content" hx-swap="innerHTML">
+                {% csrf_token %}
+                <button type="submit" class="text-red-600 hover:underline text-sm">Löschen</button>
+            </form>
+        </div>
     </li>
     {% empty %}
     <li class="py-2 text-gray-500">Keine Schüler vorhanden.</li>

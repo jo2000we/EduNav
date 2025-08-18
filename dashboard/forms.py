@@ -63,7 +63,7 @@ class LearningGoalForm(forms.ModelForm):
         fields = ["text", "session_date", "achieved"]
 
 
-class StudentLoginForm(forms.Form):
+class PseudoForm(forms.Form):
     pseudonym = forms.CharField(
         widget=forms.TextInput(
             attrs={
@@ -72,6 +72,46 @@ class StudentLoginForm(forms.Form):
             }
         )
     )
+
+
+class PasswordLoginForm(forms.Form):
+    password = forms.CharField(
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
+                "placeholder": "Passwort",
+            }
+        )
+    )
+
+
+class SetPasswordForm(forms.Form):
+    password1 = forms.CharField(
+        label="Passwort",
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
+                "placeholder": "Passwort",
+            }
+        ),
+    )
+    password2 = forms.CharField(
+        label="Passwort bestätigen",
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
+                "placeholder": "Passwort bestätigen",
+            }
+        ),
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        p1 = cleaned.get("password1")
+        p2 = cleaned.get("password2")
+        if p1 and p2 and p1 != p2:
+            raise forms.ValidationError("Passwörter stimmen nicht überein")
+        return cleaned
 
 
 class OverallGoalForm(forms.ModelForm):
