@@ -50,6 +50,7 @@ def student_dashboard(request):
         "planning_form": PlanningForm(),
         "execution_form": ExecutionForm(),
         "reflection_form": ReflectionForm(),
+        "can_create_entry": student.can_create_entry(),
     }
     return render(request, "dashboard/student_dashboard.html", context)
 
@@ -58,6 +59,8 @@ def student_dashboard(request):
 @student_required
 def create_entry(request):
     student = Student.objects.get(id=request.session["student_id"])
+    if not student.can_create_entry():
+        return redirect("student_dashboard")
     if request.method == "POST":
         form = PlanningForm(request.POST)
         if form.is_valid():

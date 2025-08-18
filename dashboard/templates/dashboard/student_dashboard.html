@@ -72,7 +72,7 @@
     </div>
   </div>
   <div class="timeline-button relative h-16 flex items-center justify-center">
-    <button data-modal-target="planningModal" data-modal-toggle="planningModal" class="bg-green-500 text-white px-4 py-2 rounded">Neues Tagesziel</button>
+    <button data-modal-target="planningModal" data-modal-toggle="planningModal" class="text-white px-4 py-2 rounded {% if can_create_entry %}bg-green-500{% else %}bg-gray-400 cursor-not-allowed{% endif %}" {% if not can_create_entry %}disabled{% endif %}>Neues Tagesziel</button>
   </div>
   {% endif %}
   {% for entry in entries %}
