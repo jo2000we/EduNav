@@ -1,4 +1,5 @@
 from functools import wraps
+from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Student, SRLEntry
 from .forms import (
@@ -7,6 +8,20 @@ from .forms import (
     ExecutionForm,
     ReflectionForm,
 )
+
+
+def _total_minutes(items):
+    total = 0
+    for item in items:
+        t = item.get("time")
+        if not t:
+            continue
+        try:
+            hours, minutes = [int(x) for x in t.split(":")]
+            total += hours * 60 + minutes
+        except (ValueError, AttributeError):
+            continue
+    return total
 
 
 def student_login(request):
@@ -55,7 +70,6 @@ def student_dashboard(request):
     return render(request, "dashboard/student_dashboard.html", context)
 
 
-
 @student_required
 def create_entry(request):
     student = Student.objects.get(id=request.session["student_id"])
@@ -64,9 +78,19 @@ def create_entry(request):
     if request.method == "POST":
         form = PlanningForm(request.POST)
         if form.is_valid():
-            entry = form.save(commit=False)
-            entry.student = student
-            entry.save()
+            planning_minutes = _total_minutes(
+                form.cleaned_data.get("time_planning", [])
+            )
+            limit = student.classroom.max_planning_execution_minutes
+            if planning_minutes > limit:
+                messages.error(
+                    request,
+                    f"Die Gesamtzeit darf {limit} Minuten nicht überschreiten.",
+                )
+            else:
+                entry = form.save(commit=False)
+                entry.student = student
+                entry.save()
     return redirect("student_dashboard")
 
 
@@ -77,7 +101,16 @@ def add_execution(request, entry_id):
     if request.method == "POST":
         form = ExecutionForm(request.POST, instance=entry)
         if form.is_valid():
-            form.save()
+            usage_minutes = _total_minutes(form.cleaned_data.get("time_usage", []))
+            planning_minutes = _total_minutes(entry.time_planning)
+            limit = student.classroom.max_planning_execution_minutes
+            if planning_minutes + usage_minutes > limit:
+                messages.error(
+                    request,
+                    f"Die Gesamtzeit darf {limit} Minuten nicht überschreiten.",
+                )
+            else:
+                form.save()
     return redirect("student_dashboard")
 
 

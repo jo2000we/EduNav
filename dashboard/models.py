@@ -22,6 +22,7 @@ class Classroom(models.Model):
     max_entries_per_week = models.PositiveSmallIntegerField(
         default=1, choices=[(i, i) for i in range(1, 8)]
     )
+    max_planning_execution_minutes = models.PositiveSmallIntegerField(default=90)
 
     class Meta:
         unique_together = ("teacher", "name")
@@ -67,9 +68,7 @@ class Student(models.Model):
 
 
 class LearningGoal(models.Model):
-    student = models.ForeignKey(
-        Student, related_name="goals", on_delete=models.CASCADE
-    )
+    student = models.ForeignKey(Student, related_name="goals", on_delete=models.CASCADE)
     text = models.TextField()
     session_date = models.DateField()
     achieved = models.BooleanField(default=False)
@@ -79,8 +78,11 @@ class LearningGoal(models.Model):
     def __str__(self):
         return f"{self.student.pseudonym}: {self.text[:50]}"
 
+
 class SRLEntry(models.Model):
-    student = models.ForeignKey(Student, related_name="entries", on_delete=models.CASCADE)
+    student = models.ForeignKey(
+        Student, related_name="entries", on_delete=models.CASCADE
+    )
     session_date = models.DateField(default=timezone.now)
     # Planning
     goals = models.JSONField(default=list)
