@@ -1,5 +1,19 @@
 from django import forms
 from .models import Classroom, Student, LearningGoal, SRLEntry
+import json
+import re
+
+
+TIME_RE = re.compile(r"^\d{1,2}:\d{2}$")
+
+
+def _normalize_time(t):
+    if not isinstance(t, str) or not TIME_RE.match(t):
+        raise ValueError("HH:MM erwartet")
+    h, m = [int(x) for x in t.split(":")]
+    if h < 0 or m < 0 or m > 59:
+        raise ValueError("Ungültige Zeit")
+    return f"{h:02d}:{m:02d}"
 
 
 class ClassroomForm(forms.ModelForm):
@@ -186,9 +200,6 @@ class ClassTimeLimitForm(forms.ModelForm):
         }
 
 
-import json
-
-
 class PlanningForm(forms.ModelForm):
     goals = forms.CharField(widget=forms.HiddenInput())
     priorities = forms.CharField(widget=forms.HiddenInput())
@@ -256,12 +267,18 @@ class PlanningForm(forms.ModelForm):
             planning = json.loads(data) if data else []
         except json.JSONDecodeError:
             planning = []
-        for item in planning:
-            if item.get("time") in ("", None, "00:00"):
+        normalized = []
+        for idx, item in enumerate(planning):
+            try:
+                item["time"] = _normalize_time(item.get("time"))
+            except ValueError as e:
+                raise forms.ValidationError(f"time_planning[{idx}].time {e}")
+            if item["time"] == "00:00":
                 raise forms.ValidationError(
                     "Für jedes Ziel muss eine Zeit größer 00:00 angegeben werden."
                 )
-        return planning
+            normalized.append(item)
+        return normalized
 
     def clean_expectations(self):
         data = self.cleaned_data.get("expectations", "[]")
@@ -320,7 +337,14 @@ class ExecutionForm(forms.ModelForm):
             usage = json.loads(data) if data else []
         except json.JSONDecodeError:
             usage = []
-        return usage
+        normalized = []
+        for idx, item in enumerate(usage):
+            try:
+                item["time"] = _normalize_time(item.get("time"))
+            except ValueError as e:
+                raise forms.ValidationError(f"time_usage[{idx}].time {e}")
+            normalized.append(item)
+        return normalized
 
     def clean_strategy_check(self):
         data = self.cleaned_data.get("strategy_check", "[]")

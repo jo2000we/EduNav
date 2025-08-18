@@ -22,16 +22,13 @@ import re
 
 def _total_minutes(items):
     total = 0
-    for item in items:
+    for idx, item in enumerate(items):
         t = item.get("time")
         if not t:
             continue
-        try:
-            norm = _normalize_time(t)
-            h, m = [int(x) for x in norm.split(":")]
-            total += h * 60 + m
-        except Exception:
-            continue
+        norm = _normalize_time(t)
+        h, m = [int(x) for x in norm.split(":")]
+        total += h * 60 + m
     return total
 
 
