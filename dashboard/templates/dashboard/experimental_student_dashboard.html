@@ -259,36 +259,118 @@
 
 </div>
 
-<!-- Chat placeholders for experimental group -->
+<!-- Chat windows for experimental group -->
 <div id="planning-chat" class="hidden fixed top-0 left-0 right-0 z-50 flex justify-center items-center w-full h-full bg-gray-900 bg-opacity-50">
   <div class="bg-white p-4 rounded shadow w-full max-w-2xl">
-    <p>Chat placeholder for planning (coming soon).</p>
-    <button class="mt-4 bg-blue-500 text-white px-4 py-2 rounded" onclick="closeChat('planning')">Schließen</button>
+    <div id="planning-log" class="h-80 overflow-y-auto mb-2 text-sm"></div>
+    <form onsubmit="submitChat(event,'planning')">
+      <input id="planning-input" class="border w-full p-2" placeholder="Antwort..." autocomplete="off" />
+      <div class="mt-2 flex justify-end">
+        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Senden</button>
+        <button type="button" class="ml-2 bg-gray-300 px-4 py-2 rounded" onclick="closeChat('planning')">Schließen</button>
+      </div>
+    </form>
   </div>
 </div>
 
 <div id="execution-chat" class="hidden fixed top-0 left-0 right-0 z-50 flex justify-center items-center w-full h-full bg-gray-900 bg-opacity-50">
   <div class="bg-white p-4 rounded shadow w-full max-w-2xl">
-    <p>Chat placeholder for execution (coming soon).</p>
-    <button class="mt-4 bg-blue-500 text-white px-4 py-2 rounded" onclick="closeChat('execution')">Schließen</button>
+    <div id="execution-log" class="h-80 overflow-y-auto mb-2 text-sm"></div>
+    <form onsubmit="submitChat(event,'execution')">
+      <input id="execution-input" class="border w-full p-2" placeholder="Antwort..." autocomplete="off" />
+      <div class="mt-2 flex justify-end">
+        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Senden</button>
+        <button type="button" class="ml-2 bg-gray-300 px-4 py-2 rounded" onclick="closeChat('execution')">Schließen</button>
+      </div>
+    </form>
   </div>
 </div>
 
 <div id="reflection-chat" class="hidden fixed top-0 left-0 right-0 z-50 flex justify-center items-center w-full h-full bg-gray-900 bg-opacity-50">
   <div class="bg-white p-4 rounded shadow w-full max-w-2xl">
-    <p>Chat placeholder for reflection (coming soon).</p>
-    <button class="mt-4 bg-blue-500 text-white px-4 py-2 rounded" onclick="closeChat('reflection')">Schließen</button>
+    <div id="reflection-log" class="h-80 overflow-y-auto mb-2 text-sm"></div>
+    <form onsubmit="submitChat(event,'reflection')">
+      <input id="reflection-input" class="border w-full p-2" placeholder="Antwort..." autocomplete="off" />
+      <div class="mt-2 flex justify-end">
+        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Senden</button>
+        <button type="button" class="ml-2 bg-gray-300 px-4 py-2 rounded" onclick="closeChat('reflection')">Schließen</button>
+      </div>
+    </form>
   </div>
 </div>
 
 <script>
 let currentEntryId = null;
+const chatHistory = {planning: [], execution: [], reflection: []};
+
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
 function openChat(type, entryId=null) {
   currentEntryId = entryId;
   document.getElementById(type + '-chat').classList.remove('hidden');
+  if (chatHistory[type].length === 0) {
+    sendMessage(type, null);
+  }
 }
+
 function closeChat(type) {
   document.getElementById(type + '-chat').classList.add('hidden');
+}
+
+function submitChat(event, type) {
+  event.preventDefault();
+  const input = document.getElementById(type + '-input');
+  const message = input.value.trim();
+  if (!message) return;
+  sendMessage(type, message);
+  input.value = '';
+}
+
+function sendMessage(type, message) {
+  if (message) chatHistory[type].push({role: 'user', content: message});
+  const url = type === 'planning'
+    ? '{% url "chat_planning" %}'
+    : type === 'execution'
+      ? `/student/api/chat/execution/${currentEntryId}/`
+      : `/student/api/chat/reflection/${currentEntryId}/`;
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCookie('csrftoken'),
+    },
+    body: JSON.stringify({messages: chatHistory[type]})
+  })
+  .then(r => r.json())
+  .then(data => {
+    chatHistory[type].push({role: 'assistant', content: data.reply});
+    renderChat(type);
+  });
+}
+
+function renderChat(type) {
+  const log = document.getElementById(type + '-log');
+  log.innerHTML = '';
+  chatHistory[type].forEach(msg => {
+    const div = document.createElement('div');
+    div.className = msg.role === 'assistant' ? 'text-blue-700 mb-2' : 'text-gray-800 mb-2 text-right';
+    div.textContent = msg.content;
+    log.appendChild(div);
+  });
+  log.scrollTop = log.scrollHeight;
 }
 </script>
 

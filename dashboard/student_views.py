@@ -1,11 +1,13 @@
 from functools import wraps
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Student, SRLEntry
+from .models import Student, SRLEntry, AppSettings
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 import json
 from django.urls import reverse
+from datetime import date
+from openai import OpenAI
 from .forms import (
     PseudoForm,
     PasswordLoginForm,
@@ -14,6 +16,8 @@ from .forms import (
     ExecutionForm,
     ReflectionForm,
 )
+from .export_views import _entry_nested
+from django.test import RequestFactory
 
 
 def _total_minutes(items):
@@ -28,6 +32,356 @@ def _total_minutes(items):
         except (ValueError, AttributeError):
             continue
     return total
+
+
+def _student_diary_json(student):
+    entries = student.entries.order_by("session_date")
+    return {
+        "Pseudonym": student.pseudonym,
+        "Gesamtziel": student.overall_goal,
+        "Fälligkeitsdatum des Gesamtziels": student.overall_goal_due_date.isoformat()
+        if student.overall_goal_due_date
+        else None,
+        "Einträge": [_entry_nested(e) for e in entries],
+    }
+
+
+def _openai_client():
+    settings = AppSettings.load()
+    if not settings.openai_api_key:
+        return None
+    return OpenAI(api_key=settings.openai_api_key)
+
+
+# System and developer prompts for each phase
+PLAN_SYSTEM_PROMPT = (
+    "Du bist ein SRL-Coach für die Planungsphase. Arbeite strikt phasengetreu "
+    "nach anerkannten SRL-Modellen. Sprich kurz, freundlich, konkret. Eine "
+    "Frage pro Nachricht. Ziel: gültiges JSON für POST \"/dashboard/api/entry/new/\". "
+    "Halte dich exakt an das geforderte Schema und an HH:MM. Prüfe Summen gegen "
+    "Minutenlimit (Standard 90 Min, außer Limit im Kontext). Bei API-Fehlern: "
+    "lies error/errors, erkläre präzise, stelle Korrekturfragen, sende korrigiertes "
+    "JSON erneut."
+)
+
+PLAN_DEVELOPER_PROMPT = (
+    "Eingabe ist ein vollständiges SRL-Tagebuch als JSON (siehe Nutzer-Nachricht) "
+    "+ aktuelles Datum.\n"
+    "1. Lies Pseudonym, Gesamtziel, Fälligkeitsdatum, letzte 'Nächste Lernphase'.\n"
+    "2. Rechne verbleibende Tage/Wochen.\n"
+    "3. Führe die Schritte 1–9 des Planungs-Ablaufs aus.\n"
+    "4. Baue nur bei Bestätigung das JSON exakt so: {\n"
+    "  'goals': ['...'],\n"
+    "  'priorities': [{'goal':'...','priority':true}],\n"
+    "  'strategies': ['...'],\n"
+    "  'resources': ['...'],\n"
+    "  'time_planning': [{'goal':'...','time':'HH:MM'}],\n"
+    "  'expectations': [{'goal':'...','indicator':'...'}]\n"
+    "}.\n"
+    "5. Sende es an /dashboard/api/entry/new/ und speichere entry_id für die nächste Phase.\n"
+    "6. Wenn 400/Fehler: zeige fehlerhafte Felder, frage gezielt nach Korrektur, "
+    "validiere erneut, re-POST.\n"
+    "7. Verwende knappe Bullet-Prompts; maximal zwei Optionen pro Frage."
+)
+
+EXEC_SYSTEM_PROMPT = (
+    "Du bist ein SRL-Coach für die Durchführungsphase. Dokumentiere Schritte, "
+    "reale Zeiten, Strategie-Check, Probleme und Emotionen. Eine Frage pro "
+    "Nachricht. Halte dich exakt an das JSON-Schema der Durchführungsphase. "
+    "Prüfe HH:MM und Summen. Bei API-Fehlern: präzise Korrektur."
+)
+
+EXEC_DEVELOPER_PROMPT = (
+    "Eingabe: SRL-Tagebuch-JSON inkl. entry_id der aktuellen Sitzung.\n"
+    "1. Hole geplante Ziele/Strategien der laufenden entry_id.\n"
+    "2. Führe die Schritte 1–7 im Ablauf aus.\n"
+    "3. Baue JSON exakt: { 'steps': ['...'], 'time_usage': [{'goal':'...','time':'HH:MM'}],"
+    " 'strategy_check': [{'strategy':'...','used':true,'useful':false,'change':'...'}],"
+    " 'problems':'...', 'emotions':'...' }.\n"
+    "4. POST an /dashboard/api/entry/<entry_id>/execution/.\n"
+    "5. Fehlerhandling wie beschrieben.\n"
+    "6. Stil: knappe Stichworte, lösungsorientiert."
+)
+
+REFL_SYSTEM_PROMPT = (
+    "Du bist ein SRL-Coach für die Reflexionsphase. Erfasse Zielerreichung, "
+    "Strategiewirkung, Gelerntes, Realismus, Abweichungen, Motivation, nächste "
+    "Phase und Strategie-Ausblick. Halte dich exakt an das JSON-Schema der "
+    "Reflexion. Knappe, präzise Sprache. Bei API-Fehlern: benenne präzise, "
+    "korrigiere, re-POST."
+)
+
+REFL_DEVELOPER_PROMPT = (
+    "Eingabe: SRL-Tagebuch-JSON inkl. entry_id und zugehörigen Planungs-/Durchführungsdaten.\n"
+    "1. Lade die heute geplanten Ziele (Reihenfolge = goal_achievement).\n"
+    "2. Führe die Schritte 1–7 aus.\n"
+    "3. Baue JSON exakt: { 'goal_achievement':[{'achievement':'vollständig','comment':'...'}],"
+    " 'strategy_evaluation':[{'helpful':true,'comment':'...','reuse':true}],"
+    " 'learned_subject':'...', 'learned_work':'...', 'planning_realistic':'...',"
+    " 'planning_deviations':'...', 'motivation_rating':'7/10', 'motivation_improve':'...',"
+    " 'next_phase':'...', 'strategy_outlook':'...' }.\n"
+    "4. POST an /dashboard/api/entry/<entry_id>/reflection/.\n"
+    "5. Fehlerhandling wie beschrieben.\n"
+    "6. Vorschläge aus Planung/Durchführung dürfen gespiegelt werden."
+)
+
+
+def _call_phase_api(phase, request, payload, entry_id=None):
+    """Call internal JSON endpoints for a given phase."""
+    rf = RequestFactory()
+    body = json.dumps(payload)
+    if phase == "planning":
+        api_request = rf.post("/", body, content_type="application/json")
+        api_request.session = request.session
+        return create_entry_json(api_request)
+    if phase == "execution" and entry_id is not None:
+        api_request = rf.post("/", body, content_type="application/json")
+        api_request.session = request.session
+        return add_execution_json(api_request, entry_id)
+    if phase == "reflection" and entry_id is not None:
+        api_request = rf.post("/", body, content_type="application/json")
+        api_request.session = request.session
+        return add_reflection_json(api_request, entry_id)
+    return JsonResponse({"error": "Invalid phase"}, status=400)
+
+
+def _chat_phase(request, phase, messages, entry_id=None):
+    client = _openai_client()
+    if client is None:
+        return JsonResponse({"error": "OpenAI API key not configured"}, status=400)
+
+    student = Student.objects.get(id=request.session["student_id"])
+    diary = _student_diary_json(student)
+    minute_limit = student.classroom.max_planning_execution_minutes
+
+    if not messages:
+        intro = (
+            f"Hier ist das aktuelle SRL-Tagebuch (JSON). Bitte beginne mit der "
+            f"{phase.capitalize()}sphase für die nächste Doppelstunde.\n"
+            f"{json.dumps(diary, ensure_ascii=False)}\n"
+            f"Aktuelles Datum: {date.today().isoformat()}\n"
+            f"Klassen-Minutenlimit je Doppelstunde: {minute_limit}"
+        )
+        messages = [{"role": "user", "content": intro}]
+
+    system_prompt = {
+        "planning": PLAN_SYSTEM_PROMPT,
+        "execution": EXEC_SYSTEM_PROMPT,
+        "reflection": REFL_SYSTEM_PROMPT,
+    }[phase]
+    developer_prompt = {
+        "planning": PLAN_DEVELOPER_PROMPT,
+        "execution": EXEC_DEVELOPER_PROMPT,
+        "reflection": REFL_DEVELOPER_PROMPT,
+    }[phase]
+
+    full_messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "developer", "content": developer_prompt},
+    ] + messages
+
+    tools = []
+    if phase == "planning":
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "submit_planning",
+                    "description": "Speichert die Planungsdaten und gibt entry_id zurück",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "goals": {"type": "array", "items": {"type": "string"}},
+                            "priorities": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "goal": {"type": "string"},
+                                        "priority": {"type": "boolean"},
+                                    },
+                                    "required": ["goal", "priority"],
+                                },
+                            },
+                            "strategies": {"type": "array", "items": {"type": "string"}},
+                            "resources": {"type": "array", "items": {"type": "string"}},
+                            "time_planning": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "goal": {"type": "string"},
+                                        "time": {"type": "string"},
+                                    },
+                                    "required": ["goal", "time"],
+                                },
+                            },
+                            "expectations": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "goal": {"type": "string"},
+                                        "indicator": {"type": "string"},
+                                    },
+                                    "required": ["goal", "indicator"],
+                                },
+                            },
+                        },
+                        "required": [
+                            "goals",
+                            "priorities",
+                            "strategies",
+                            "resources",
+                            "time_planning",
+                            "expectations",
+                        ],
+                    },
+                },
+            }
+        ]
+    elif phase == "execution":
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "submit_execution",
+                    "description": "Speichert die Durchführungsdaten",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "steps": {"type": "array", "items": {"type": "string"}},
+                            "time_usage": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "goal": {"type": "string"},
+                                        "time": {"type": "string"},
+                                    },
+                                    "required": ["goal", "time"],
+                                },
+                            },
+                            "strategy_check": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "strategy": {"type": "string"},
+                                        "used": {"type": "boolean"},
+                                        "useful": {"type": "boolean"},
+                                        "change": {"type": "string"},
+                                    },
+                                    "required": [
+                                        "strategy",
+                                        "used",
+                                        "useful",
+                                        "change",
+                                    ],
+                                },
+                            },
+                            "problems": {"type": "string"},
+                            "emotions": {"type": "string"},
+                        },
+                        "required": [
+                            "steps",
+                            "time_usage",
+                            "strategy_check",
+                            "problems",
+                            "emotions",
+                        ],
+                    },
+                },
+            }
+        ]
+    else:  # reflection
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "submit_reflection",
+                    "description": "Speichert die Reflexionsdaten",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "goal_achievement": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "achievement": {"type": "string"},
+                                        "comment": {"type": "string"},
+                                    },
+                                    "required": ["achievement", "comment"],
+                                },
+                            },
+                            "strategy_evaluation": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "helpful": {"type": "boolean"},
+                                        "comment": {"type": "string"},
+                                        "reuse": {"type": "boolean"},
+                                    },
+                                    "required": ["helpful", "comment", "reuse"],
+                                },
+                            },
+                            "learned_subject": {"type": "string"},
+                            "learned_work": {"type": "string"},
+                            "planning_realistic": {"type": "string"},
+                            "planning_deviations": {"type": "string"},
+                            "motivation_rating": {"type": "string"},
+                            "motivation_improve": {"type": "string"},
+                            "next_phase": {"type": "string"},
+                            "strategy_outlook": {"type": "string"},
+                        },
+                        "required": [
+                            "goal_achievement",
+                            "strategy_evaluation",
+                            "learned_subject",
+                            "learned_work",
+                            "planning_realistic",
+                            "planning_deviations",
+                            "motivation_rating",
+                            "motivation_improve",
+                            "next_phase",
+                            "strategy_outlook",
+                        ],
+                    },
+                },
+            }
+        ]
+
+    while True:
+        completion = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=full_messages,
+            tools=tools,
+        )
+        message = completion.choices[0].message
+        finish = completion.choices[0].finish_reason
+        if message.content:
+            full_messages.append({"role": message.role, "content": message.content})
+        if finish == "tool_calls" and message.tool_calls:
+            full_messages[-1] = {
+                "role": message.role,
+                "tool_calls": message.tool_calls,
+            }
+            for call in message.tool_calls:
+                args = json.loads(call.function.arguments or "{}")
+                api_resp = _call_phase_api(phase, request, args, entry_id)
+                tool_content = api_resp.content.decode()
+                full_messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": call.id,
+                        "name": call.function.name,
+                        "content": tool_content,
+                    }
+                )
+            continue
+        return message.content or ""
 
 
 def student_login(request):
@@ -330,3 +684,40 @@ def add_reflection_json(request, entry_id):
         form.save()
         return JsonResponse({"status": "ok"})
     return JsonResponse({"errors": form.errors}, status=400)
+
+
+# Chatbot views
+@student_required
+@require_POST
+def chat_planning(request):
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    messages = payload.get("messages", [])
+    reply = _chat_phase(request, "planning", messages)
+    return JsonResponse({"reply": reply})
+
+
+@student_required
+@require_POST
+def chat_execution(request, entry_id):
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    messages = payload.get("messages", [])
+    reply = _chat_phase(request, "execution", messages, entry_id=entry_id)
+    return JsonResponse({"reply": reply})
+
+
+@student_required
+@require_POST
+def chat_reflection(request, entry_id):
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    messages = payload.get("messages", [])
+    reply = _chat_phase(request, "reflection", messages, entry_id=entry_id)
+    return JsonResponse({"reply": reply})
