@@ -4,6 +4,7 @@
 {% block content %}
 
 <style>
+  main.container { padding-top: 0.5rem; }
   .timeline-container { position: relative; padding-bottom: 50vh; }
   .timeline-container::before {
     content: "";
@@ -26,6 +27,7 @@
     border-radius: 9999px;
     background: #3b82f6;
   }
+  .timeline-entry.no-dot::before { display: none; }
   .timeline-card {
     transition: transform 0.3s, opacity 0.3s, max-width 0.3s;
     max-width: 24rem;
@@ -56,20 +58,22 @@
   }
 </style>
 
-<h2 class="text-2xl font-bold mb-4">Hallo {{ student.pseudonym }}</h2>
-
-<div class="mb-6 bg-white p-4 rounded shadow">
-  <h3 class="font-semibold mb-2">Gesamtziel</h3>
-  <form method="post" action="{% url 'student_overall_goal' %}">
-    {% csrf_token %}
-    {{ overall_goal_form.overall_goal }}
-    <button type="submit" class="mt-2 bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
-  </form>
-</div>
-
-<button data-modal-target="planningModal" data-modal-toggle="planningModal" class="mb-4 bg-green-500 text-white px-4 py-2 rounded">Neues Tagesziel</button>
-
 <div id="timeline" class="timeline-container space-y-16">
+  {% if student.overall_goal %}
+  <div class="timeline-entry overall-goal" data-entry="overall-goal">
+    <div class="timeline-card inactive bg-white p-6 rounded-lg shadow mx-auto w-full overall-goal-card">
+      <h4 class="font-bold text-center text-lg mb-4">Gesamtziel bis zum {{ student.overall_goal_due_date }}</h4>
+      <div class="inactive-view text-sm space-y-1">
+        <p>{{ student.overall_goal }}</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="timeline-entry no-dot flex justify-center" data-entry="new-goal-button">
+    <button data-modal-target="planningModal" data-modal-toggle="planningModal" class="bg-green-500 text-white px-4 py-2 rounded">Neues Tagesziel</button>
+  </div>
+
   {% for entry in entries %}
   <div class="timeline-entry" data-entry="{{ entry.id }}">
     <div class="timeline-card inactive bg-white p-6 rounded-lg shadow mx-auto w-full">
@@ -914,8 +918,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // GSAP animations for timeline and modals
   if (window.gsap) {
-    const entries = gsap.utils.toArray('.timeline-entry');
-    let activeEntry = null;
+    const entries = gsap.utils.toArray('.timeline-entry').filter(entry => entry.querySelector('.timeline-card'));
+    let activeEntry = entries[0];
+    setActive(activeEntry);
 
     function setActive(entry) {
       document.querySelectorAll('.timeline-card').forEach(card => {
@@ -964,7 +969,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     window.addEventListener('scroll', () => requestAnimationFrame(updateActive));
-    updateActive();
 
     gsap.from('.timeline-entry', { opacity: 0, y: 50, duration: 0.6, stagger: 0.2 });
 

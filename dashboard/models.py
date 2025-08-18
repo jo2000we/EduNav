@@ -35,6 +35,7 @@ class Student(models.Model):
     pseudonym = models.CharField(max_length=50)
     login_code = models.CharField(max_length=20, blank=True)
     overall_goal = models.TextField(blank=True, null=True)
+    overall_goal_due_date = models.DateField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
