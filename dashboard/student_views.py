@@ -27,20 +27,21 @@ def _total_minutes(items):
         if not t:
             continue
         try:
-            hours, minutes = [int(x) for x in t.split(":")]
-            total += hours * 60 + minutes
-        except (ValueError, AttributeError):
+            norm = _normalize_time(t)
+            h, m = [int(x) for x in norm.split(":")]
+            total += h * 60 + m
+        except Exception:
             continue
     return total
 
 
-TIME_RE = re.compile(r"^\d{1,2}:\d{2}$")
+TIME_RE = re.compile(r"^\d{1,2}:\d{1,2}$")
 
 
 def _normalize_time(t):
     if not isinstance(t, str) or not TIME_RE.match(t):
         raise ValueError("HH:MM erwartet")
-    h, m = map(int, t.split(":"))
+    h, m = [int(x) for x in t.split(":")]
     if h < 0 or m < 0 or m > 59:
         raise ValueError("Ungültige Zeit")
     return f"{h:02d}:{m:02d}"
@@ -145,7 +146,7 @@ REFL_DEVELOPER_PROMPT = (
     "Eingabe: SRL-Tagebuch-JSON inkl. entry_id und zugehörigen Planungs-/Durchführungsdaten.\n"
     "1. Lade die heute geplanten Ziele (Reihenfolge = goal_achievement).\n"
     "2. Führe die Schritte 1–7 aus.\n"
-    "3. Baue JSON exakt: { 'goal_achievement':[{'achievement':'vollständig','comment':'...'}],"
+    "3. Baue JSON exakt: { 'goal_achievement':[{'goal':'...','achievement':'vollständig','comment':'...'}],"
     " 'strategy_evaluation':[{'strategy':'...','helpful':'ja|teilweise|nein','comment':'...','reuse':'ja|nein|vielleicht'}],"
     " 'learned_subject':'...', 'learned_work':'...', 'planning_realistic':'...',"
     " 'planning_deviations':'...', 'motivation_rating':'7/10', 'motivation_improve':'...',"
@@ -164,14 +165,17 @@ def _call_phase_api(phase, request, payload, entry_id=None):
     if phase == "planning":
         api_request = rf.post("/", body, content_type="application/json")
         api_request.session = request.session
+        api_request.user = request.user
         return create_entry_json(api_request)
     if phase == "execution" and entry_id is not None:
         api_request = rf.post("/", body, content_type="application/json")
         api_request.session = request.session
+        api_request.user = request.user
         return add_execution_json(api_request, entry_id)
     if phase == "reflection" and entry_id is not None:
         api_request = rf.post("/", body, content_type="application/json")
         api_request.session = request.session
+        api_request.user = request.user
         return add_reflection_json(api_request, entry_id)
     return JsonResponse({"error": "Invalid phase"}, status=400)
 
@@ -181,12 +185,24 @@ def _chat_phase(request, phase, messages, entry_id=None):
     if client is None:
         return {"error": "OpenAI API key not configured"}
 
-    model = app_settings.openai_model or "gpt-4o-mini"
     temperature = (
         app_settings.openai_temperature
         if app_settings.openai_temperature is not None
         else 0.2
     )
+
+    model = None
+    for candidate in [app_settings.openai_model, "gpt-4o-mini", "gpt-4o"]:
+        if not candidate:
+            continue
+        try:
+            client.models.retrieve(candidate)
+            model = candidate
+            break
+        except Exception:
+            continue
+    if model is None:
+        return {"error": "No valid OpenAI model configured"}
 
     student = Student.objects.get(id=request.session["student_id"])
     diary = _student_diary_json(student)
@@ -341,10 +357,11 @@ def _chat_phase(request, phase, messages, entry_id=None):
                                 "items": {
                                     "type": "object",
                                     "properties": {
+                                        "goal": {"type": "string"},
                                         "achievement": {"type": "string"},
                                         "comment": {"type": "string"},
                                     },
-                                    "required": ["achievement", "comment"],
+                                    "required": ["goal", "achievement", "comment"],
                                 },
                             },
                             "strategy_evaluation": {
@@ -405,8 +422,6 @@ def _chat_phase(request, phase, messages, entry_id=None):
             return {"error": f"OpenAI error: {e.__class__.__name__}"}
         message = completion.choices[0].message
         finish = completion.choices[0].finish_reason
-        if message.content:
-            full_messages.append({"role": message.role, "content": message.content})
         if finish == "tool_calls" and message.tool_calls:
             if submitted:
                 full_messages.append(
@@ -415,10 +430,7 @@ def _chat_phase(request, phase, messages, entry_id=None):
                 return {"reply": "(Hinweis: Daten bereits gespeichert)"}
             submitted = True
             call = message.tool_calls[0]
-            full_messages[-1] = {
-                "role": message.role,
-                "tool_calls": [call],
-            }
+            full_messages.append({"role": message.role, "tool_calls": [call]})
             args = json.loads(call.function.arguments or "{}")
             api_resp = _call_phase_api(phase, request, args, entry_id)
             tool_payload = {
@@ -435,6 +447,8 @@ def _chat_phase(request, phase, messages, entry_id=None):
                 }
             )
             continue
+        if message.content:
+            full_messages.append({"role": message.role, "content": message.content})
         return {"reply": message.content or ""}
     return {"error": "Conversation loop limit reached"}
 
@@ -737,7 +751,7 @@ def add_reflection_json(request, entry_id):
 
     Expected JSON format:
     {
-      "goal_achievement": [{"achievement": "str", "comment": "str"}, ...],
+      "goal_achievement": [{"goal": "str", "achievement": "str", "comment": "str"}, ...],
       "strategy_evaluation": [{"strategy": "str", "helpful": "ja|teilweise|nein", "comment": "str", "reuse": "ja|nein|vielleicht"}, ...],
       "learned_subject": "str",
       "learned_work": "str",
@@ -763,8 +777,14 @@ def add_reflection_json(request, entry_id):
             se["reuse"] = "ja" if se["reuse"] else "nein"
         if "reason" in se and "comment" not in se:
             se["comment"] = se.pop("reason")
+    ga_list = payload.get("goal_achievement", [])
+    planned_goals = entry.goals or []
+    if ga_list and planned_goals:
+        for i, ga in enumerate(ga_list):
+            if "goal" not in ga and i < len(planned_goals):
+                ga["goal"] = planned_goals[i]
     form_data = {
-        "goal_achievement": json.dumps(payload.get("goal_achievement", [])),
+        "goal_achievement": json.dumps(ga_list),
         "strategy_evaluation": json.dumps(payload.get("strategy_evaluation", [])),
         "learned_subject": payload.get("learned_subject", ""),
         "learned_work": payload.get("learned_work", ""),

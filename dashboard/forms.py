@@ -437,9 +437,13 @@ class ReflectionForm(forms.ModelForm):
         except json.JSONDecodeError:
             ga = []
         for item in ga:
-            if not item.get("achievement") or not item.get("comment"):
+            if (
+                not item.get("goal")
+                or not item.get("achievement")
+                or not item.get("comment")
+            ):
                 raise forms.ValidationError(
-                    "Für jedes Ziel muss eine Einschätzung und ein Kommentar angegeben werden."
+                    "Für jedes Ziel müssen Zielname, Einschätzung und Kommentar angegeben werden."
                 )
         return ga
 
