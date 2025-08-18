@@ -4,7 +4,7 @@
 {% block content %}
 
 <style>
-  .timeline-container { position: relative; }
+  .timeline-container { position: relative; padding-bottom: 50vh; }
   .timeline-container::before {
     content: "";
     position: absolute;
@@ -891,19 +891,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // GSAP animations for timeline and modals
   if (window.gsap) {
-    gsap.registerPlugin(ScrollTrigger);
-    gsap.utils.toArray('.timeline-entry').forEach(entry => {
-      ScrollTrigger.create({
-        trigger: entry,
-        start: 'top center',
-        end: 'bottom center',
-        onEnter: () => setActive(entry),
-        onEnterBack: () => setActive(entry)
-      });
-    });
-
-    const firstEntry = document.querySelector('.timeline-entry');
-    if (firstEntry) setActive(firstEntry);
+    const entries = gsap.utils.toArray('.timeline-entry');
+    let activeEntry = null;
 
     function setActive(entry) {
       document.querySelectorAll('.timeline-card').forEach(card => {
@@ -929,6 +918,30 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       gsap.to(card, { scale: 1, opacity: 1, duration: 0.3 });
     }
+
+    function updateActive() {
+      const viewportCenter = window.innerHeight / 2;
+      let closest = activeEntry;
+      let closestDist = activeEntry
+        ? Math.abs(activeEntry.getBoundingClientRect().top + activeEntry.getBoundingClientRect().height / 2 - viewportCenter)
+        : Infinity;
+      entries.forEach(entry => {
+        const rect = entry.getBoundingClientRect();
+        const entryCenter = rect.top + rect.height / 2;
+        const dist = Math.abs(entryCenter - viewportCenter);
+        if (dist < closestDist - 20) { // small threshold for "sticky" behaviour
+          closestDist = dist;
+          closest = entry;
+        }
+      });
+      if (closest && closest !== activeEntry) {
+        activeEntry = closest;
+        setActive(activeEntry);
+      }
+    }
+
+    window.addEventListener('scroll', () => requestAnimationFrame(updateActive));
+    updateActive();
 
     gsap.from('.timeline-entry', { opacity: 0, y: 50, duration: 0.6, stagger: 0.2 });
 
