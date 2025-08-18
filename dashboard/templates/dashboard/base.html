@@ -19,12 +19,20 @@
         {% block content %}{% endblock %}
     </main>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flowbite@2.4.1/dist/flowbite.min.js"></script>
     <script>
         document.addEventListener('click', function (e) {
-            const btn = e.target.closest('[data-modal-hide]');
-            if (btn) {
-                const modalId = btn.getAttribute('data-modal-hide');
+            const openBtn = e.target.closest('[data-modal-target]');
+            if (openBtn) {
+                const modalId = openBtn.getAttribute('data-modal-target');
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.classList.remove('hidden');
+                }
+            }
+
+            const closeBtn = e.target.closest('[data-modal-hide]');
+            if (closeBtn) {
+                const modalId = closeBtn.getAttribute('data-modal-hide');
                 const modal = document.getElementById(modalId);
                 if (modal) {
                     modal.classList.add('hidden');
