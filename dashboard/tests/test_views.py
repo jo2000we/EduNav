@@ -1,7 +1,8 @@
+import json
 import pytest
 from django.urls import reverse
 from django.contrib.auth.models import User
-from dashboard.models import Classroom, Student
+from dashboard.models import Classroom, Student, SRLEntry
 
 
 @pytest.mark.django_db
@@ -158,3 +159,46 @@ def test_class_time_limit_prefills_form(client):
         HTTP_HX_REQUEST="true",
     )
     assert b'value="70"' in response.content
+
+
+@pytest.mark.django_db
+def test_execution_time_usage_only_checked(client):
+    teacher = User.objects.create_user(username="t1", password="pass")
+    classroom = Classroom.objects.create(
+        teacher=teacher,
+        name="Klasse A",
+        group_type="CONTROL",
+        max_planning_execution_minutes=90,
+    )
+    student = Student.objects.create(classroom=classroom, pseudonym="S1")
+    entry = SRLEntry.objects.create(
+        student=student,
+        time_planning=[
+            {"goal": "Ziel 1", "time": "00:15"},
+            {"goal": "Ziel 2", "time": "00:35"},
+            {"goal": "Ziel 3", "time": "00:30"},
+        ],
+    )
+    session = client.session
+    session["student_id"] = student.id
+    session.save()
+
+    usage = [
+        {"goal": "Ziel 1", "time": "00:15"},
+        {"goal": "Ziel 2", "time": "00:35"},
+        {"goal": "Ziel 3", "time": "00:30"},
+    ]
+    response = client.post(
+        reverse("student_entry_execution", args=[entry.id]),
+        {
+            "steps": json.dumps([u["goal"] for u in usage]),
+            "time_usage": json.dumps(usage),
+            "strategy_check": "[]",
+            "problems": "",
+            "emotions": "",
+        },
+        follow=True,
+    )
+    entry.refresh_from_db()
+    assert response.status_code == 200
+    assert entry.time_usage == usage

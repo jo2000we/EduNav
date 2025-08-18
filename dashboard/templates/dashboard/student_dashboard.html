@@ -732,8 +732,7 @@ function setupExecutionModal(id) {
     updateHidden();
     const usage = JSON.parse(timeInput.value || '[]');
     const usageMinutes = usage.reduce((sum, t) => sum + toMinutes(t.time), 0);
-    const planningMinutes = timePlanning.reduce((sum, t) => sum + toMinutes(t.time), 0);
-    if (planningMinutes + usageMinutes > MAX_MINUTES) {
+    if (usageMinutes > MAX_MINUTES) {
       e.preventDefault();
       alert(`Die Gesamtzeit darf ${MAX_MINUTES} Minuten nicht überschreiten.`);
     }
