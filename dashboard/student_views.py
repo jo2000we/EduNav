@@ -2,7 +2,9 @@ from functools import wraps
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Student, SRLEntry
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.http import require_POST
+import json
 from django.urls import reverse
 from .forms import (
     PseudoForm,
@@ -123,6 +125,11 @@ def student_required(view_func):
 def student_dashboard(request):
     student = Student.objects.get(id=request.session["student_id"])
     entries = student.entries.order_by("-session_date")
+    template = (
+        "dashboard/control_student_dashboard.html"
+        if student.classroom.group_type == student.classroom.GroupType.CONTROL
+        else "dashboard/experimental_student_dashboard.html"
+    )
     context = {
         "student": student,
         "entries": entries,
@@ -131,7 +138,7 @@ def student_dashboard(request):
         "reflection_form": ReflectionForm(),
         "can_create_entry": student.can_create_entry(),
     }
-    return render(request, "dashboard/student_dashboard.html", context)
+    return render(request, template, context)
 
 
 @student_required
@@ -186,3 +193,140 @@ def add_reflection(request, entry_id):
         if form.is_valid():
             form.save()
     return redirect("student_dashboard")
+
+
+@student_required
+@require_POST
+def create_entry_json(request):
+    """Create a new SRL entry using JSON data.
+
+    Expected JSON format:
+    {
+      "goals": ["str", ...],
+      "priorities": [{"goal": "str", "priority": bool}, ...],
+      "strategies": ["str", ...],
+      "resources": ["str", ...],
+      "time_planning": [{"goal": "str", "time": "HH:MM"}, ...],
+      "expectations": [{"goal": "str", "indicator": "str"}, ...]
+    }
+    """
+    student = Student.objects.get(id=request.session["student_id"])
+    if not student.can_create_entry():
+        return JsonResponse({"error": "Entry limit reached"}, status=403)
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    form_data = {
+        field: json.dumps(payload.get(field, []))
+        for field in [
+            "goals",
+            "priorities",
+            "strategies",
+            "resources",
+            "time_planning",
+            "expectations",
+        ]
+    }
+    form = PlanningForm(form_data)
+    if form.is_valid():
+        planning_minutes = _total_minutes(form.cleaned_data.get("time_planning", []))
+        limit = student.classroom.max_planning_execution_minutes
+        if planning_minutes > limit:
+            return JsonResponse(
+                {"error": f"Die Gesamtzeit darf {limit} Minuten nicht überschreiten."},
+                status=400,
+            )
+        entry = form.save(commit=False)
+        entry.student = student
+        entry.save()
+        return JsonResponse({"entry_id": entry.id})
+    return JsonResponse({"errors": form.errors}, status=400)
+
+
+@student_required
+@require_POST
+def add_execution_json(request, entry_id):
+    """Update execution phase for an entry using JSON data.
+
+    Expected JSON format:
+    {
+      "steps": ["str", ...],
+      "time_usage": [{"goal": "str", "time": "HH:MM"}, ...],
+      "strategy_check": [{"strategy": "str", "used": bool, "useful": bool, "change": "str"}, ...],
+      "problems": "str",
+      "emotions": "str"
+    }
+    """
+    student = Student.objects.get(id=request.session["student_id"])
+    entry = get_object_or_404(SRLEntry, id=entry_id, student=student)
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    form_data = {
+        "steps": json.dumps(payload.get("steps", [])),
+        "time_usage": json.dumps(payload.get("time_usage", [])),
+        "strategy_check": json.dumps(payload.get("strategy_check", [])),
+        "problems": payload.get("problems", ""),
+        "emotions": payload.get("emotions", ""),
+    }
+    form = ExecutionForm(form_data, instance=entry)
+    if form.is_valid():
+        usage_minutes = _total_minutes(form.cleaned_data.get("time_usage", []))
+        limit = student.classroom.max_planning_execution_minutes
+        if usage_minutes > limit:
+            return JsonResponse(
+                {"error": f"Die Gesamtzeit darf {limit} Minuten nicht überschreiten."},
+                status=400,
+            )
+        form.save()
+        return JsonResponse({"status": "ok"})
+    return JsonResponse({"errors": form.errors}, status=400)
+
+
+@student_required
+@require_POST
+def add_reflection_json(request, entry_id):
+    """Update reflection phase for an entry using JSON data.
+
+    Expected JSON format:
+    {
+      "goal_achievement": [{"achievement": "str", "comment": "str"}, ...],
+      "strategy_evaluation": [{"helpful": bool, "comment": "str", "reuse": bool}, ...],
+      "learned_subject": "str",
+      "learned_work": "str",
+      "planning_realistic": "str",
+      "planning_deviations": "str",
+      "motivation_rating": "str",
+      "motivation_improve": "str",
+      "next_phase": "str",
+      "strategy_outlook": "str"
+    }
+    """
+    student = Student.objects.get(id=request.session["student_id"])
+    entry = get_object_or_404(SRLEntry, id=entry_id, student=student)
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    form_data = {
+        "goal_achievement": json.dumps(payload.get("goal_achievement", [])),
+        "strategy_evaluation": json.dumps(payload.get("strategy_evaluation", [])),
+        "learned_subject": payload.get("learned_subject", ""),
+        "learned_work": payload.get("learned_work", ""),
+        "planning_realistic": payload.get("planning_realistic", ""),
+        "planning_deviations": payload.get("planning_deviations", ""),
+        "motivation_rating": payload.get("motivation_rating", ""),
+        "motivation_improve": payload.get("motivation_improve", ""),
+        "next_phase": payload.get("next_phase", ""),
+        "strategy_outlook": payload.get("strategy_outlook", ""),
+    }
+    form = ReflectionForm(form_data, instance=entry)
+    if form.is_valid():
+        form.save()
+        return JsonResponse({"status": "ok"})
+    return JsonResponse({"errors": form.errors}, status=400)

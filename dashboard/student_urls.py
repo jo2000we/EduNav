@@ -17,4 +17,16 @@ urlpatterns = [
         student_views.add_reflection,
         name="student_entry_reflection",
     ),
+    # API endpoints for experimental group
+    path("api/entry/new/", student_views.create_entry_json, name="student_entry_create_json"),
+    path(
+        "api/entry/<int:entry_id>/execution/",
+        student_views.add_execution_json,
+        name="student_entry_execution_json",
+    ),
+    path(
+        "api/entry/<int:entry_id>/reflection/",
+        student_views.add_reflection_json,
+        name="student_entry_reflection_json",
+    ),
 ]
