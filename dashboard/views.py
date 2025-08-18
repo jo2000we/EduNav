@@ -7,7 +7,7 @@ import json
 import requests
 
 from .models import Classroom, Student, AppSettings
-from .forms import ClassroomForm, StudentForm
+from .forms import ClassroomForm, StudentForm, ClassOverallGoalForm
 
 
 @login_required
@@ -32,6 +32,31 @@ def classroom_create(request):
     else:
         form = ClassroomForm()
     return render(request, "dashboard/classroom_form.html", {"form": form})
+
+
+@login_required
+def set_class_overall_goal(request, classroom_id):
+    classroom = get_object_or_404(Classroom, id=classroom_id, teacher=request.user)
+    if request.method == "POST":
+        form = ClassOverallGoalForm(request.POST)
+        if form.is_valid():
+            goal = form.cleaned_data["overall_goal"]
+            due = form.cleaned_data["overall_goal_due_date"]
+            classroom.students.update(overall_goal=goal, overall_goal_due_date=due)
+            if request.headers.get("HX-Request"):
+                response = HttpResponse()
+                response["HX-Redirect"] = reverse("classroom_list")
+                return response
+            return redirect("classroom_list")
+    else:
+        form = ClassOverallGoalForm()
+    if request.headers.get("HX-Request"):
+        return render(
+            request,
+            "dashboard/class_overall_goal_form.html",
+            {"form": form, "classroom": classroom},
+        )
+    return redirect("classroom_list")
 
 
 @login_required

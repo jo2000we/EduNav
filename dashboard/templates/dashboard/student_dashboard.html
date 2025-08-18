@@ -54,22 +54,23 @@
     border-bottom: none;
     padding-bottom: 0;
   }
+  .timeline-entry.overall-goal { padding-top: 0; }
 </style>
 
-<h2 class="text-2xl font-bold mb-4">Hallo {{ student.pseudonym }}</h2>
-
-<div class="mb-6 bg-white p-4 rounded shadow">
-  <h3 class="font-semibold mb-2">Gesamtziel</h3>
-  <form method="post" action="{% url 'student_overall_goal' %}">
-    {% csrf_token %}
-    {{ overall_goal_form.overall_goal }}
-    <button type="submit" class="mt-2 bg-blue-500 text-white px-4 py-2 rounded">Speichern</button>
-  </form>
-</div>
-
-<button data-modal-target="planningModal" data-modal-toggle="planningModal" class="mb-4 bg-green-500 text-white px-4 py-2 rounded">Neues Tagesziel</button>
-
-<div id="timeline" class="timeline-container space-y-16">
+<div id="timeline" class="timeline-container space-y-16 -mt-4">
+  {% if student.overall_goal %}
+  <div class="timeline-entry overall-goal" data-entry="overall-goal">
+    <div class="timeline-card inactive bg-white p-6 rounded-lg shadow mx-auto w-full overall-goal-card">
+      <h4 class="font-bold text-center text-lg mb-4">Gesamtziel bis zum {{ student.overall_goal_due_date }}</h4>
+      <div class="inactive-view text-sm space-y-1">
+        <p>{{ student.overall_goal }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="timeline-button relative h-16 flex items-center justify-center">
+    <button data-modal-target="planningModal" data-modal-toggle="planningModal" class="bg-green-500 text-white px-4 py-2 rounded">Neues Tagesziel</button>
+  </div>
+  {% endif %}
   {% for entry in entries %}
   <div class="timeline-entry" data-entry="{{ entry.id }}">
     <div class="timeline-card inactive bg-white p-6 rounded-lg shadow mx-auto w-full">
@@ -915,7 +916,10 @@ document.addEventListener('DOMContentLoaded', function() {
   // GSAP animations for timeline and modals
   if (window.gsap) {
     const entries = gsap.utils.toArray('.timeline-entry');
-    let activeEntry = null;
+    let activeEntry = entries[0] || null;
+    if (activeEntry) {
+      setActive(activeEntry);
+    }
 
     function setActive(entry) {
       document.querySelectorAll('.timeline-card').forEach(card => {
@@ -964,7 +968,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     window.addEventListener('scroll', () => requestAnimationFrame(updateActive));
-    updateActive();
 
     gsap.from('.timeline-entry', { opacity: 0, y: 50, duration: 0.6, stagger: 0.2 });
 
