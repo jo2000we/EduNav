@@ -2,7 +2,15 @@
 {% block content %}
 <div class="flex items-center justify-between mb-4">
     <h1 class="text-2xl">Klassenräume</h1>
-    <button data-modal-target="classroom-modal" data-modal-toggle="classroom-modal" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">Neue Klasse</button>
+    <div class="flex items-center space-x-4">
+        <button data-modal-target="classroom-modal" data-modal-toggle="classroom-modal" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">Neue Klasse</button>
+        <a href="{% url 'settings' %}" class="text-gray-600 hover:text-gray-800" title="Einstellungen">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894a1.125 1.125 0 001.63.79l.764-.44a1.125 1.125 0 011.45.272l.773 1.063c.33.453.267 1.08-.153 1.47l-.7.668c-.4.385-.486 1.002-.202 1.487l.5.867c.246.427.095.973-.304 1.267l-.805.604c-.417.314-.546.874-.3 1.33l.262.486c.29.538.122 1.205-.37 1.553l-.9.654c-.413.3-.97.33-1.414.07l-.862-.519a1.125 1.125 0 00-1.134 0l-.862.519c-.444.26-1.001.23-1.414-.07l-.9-.654a1.125 1.125 0 01-.37-1.553l.262-.486c.246-.456.117-1.016-.3-1.33l-.805-.604a1.125 1.125 0 01-.304-1.267l.5-.867c.284-.485.198-1.102-.202-1.487l-.7-.668a1.125 1.125 0 01-.153-1.47l.773-1.063a1.125 1.125 0 011.45-.272l.764.44a1.125 1.125 0 001.63-.79l.149-.894z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+        </a>
+    </div>
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="classroom-list">
