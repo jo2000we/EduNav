@@ -27,3 +27,17 @@ def test_classroom_entry_limits_defaults():
     )
     assert classroom.max_entries_per_day == 1
     assert classroom.max_entries_per_week == 1
+
+
+@pytest.mark.django_db
+def test_student_password_set_and_check():
+    teacher = User.objects.create(username="t1")
+    classroom = Classroom.objects.create(teacher=teacher, name="Klasse A", group_type="CONTROL")
+    student = Student.objects.create(classroom=classroom, pseudonym="S1")
+    assert not student.check_password("secret")
+    student.set_password("secret")
+    student.save()
+    assert student.check_password("secret")
+    student.set_password(None)
+    student.save()
+    assert not student.check_password("secret")

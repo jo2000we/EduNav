@@ -16,6 +16,11 @@ urlpatterns = [
         name="student_delete",
     ),
     path(
+        "classrooms/<int:classroom_id>/students/<int:student_id>/reset_password/",
+        views.student_reset_password,
+        name="student_reset_password",
+    ),
+    path(
         "classrooms/<int:classroom_id>/students/<int:student_id>/",
         views.student_detail,
         name="student_detail",
