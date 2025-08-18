@@ -102,7 +102,11 @@
           {% if entry.priorities %}
           <div>
             <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5-5 5M6 7l5 5-5 5"/></svg>Prioritäten</p>
-            <p id="priorities-{{ entry.id }}" class="mt-1 text-sm"></p>
+            <p class="mt-1 text-sm">
+              {% for p in entry.priorities %}
+                {% if p.priority %}<span class="underline">{{ p.goal }}</span>{% else %}{{ p.goal }}{% endif %}{% if not forloop.last %} &rarr; {% endif %}
+              {% endfor %}
+            </p>
           </div>
           {% endif %}
           {% if entry.strategies %}
@@ -169,7 +173,7 @@
             <p class="font-semibold mt-4">Strategiecheck</p>
             <ul class="mt-1 space-y-1 text-sm list-disc list-inside">
               {% for sc in entry.strategy_check %}
-              <li>{{ sc.strategy }}{% if sc.used is not None %} – {{ sc.used|yesno:'genutzt,nicht genutzt' }}{% endif %}{% if sc.useful is not None %}, {{ sc.useful|yesno:'sinnvoll,nicht sinnvoll' }}{% endif %}{% if sc.adaptation %} – {{ sc.adaptation }}{% endif %}</li>
+              <li>{{ sc.strategy }}{% if sc.used is not None %} – {{ sc.used|yesno:'genutzt,nicht genutzt' }}{% endif %}{% if sc.useful is not None %}, {{ sc.useful|yesno:'sinnvoll,nicht sinnvoll' }}{% endif %}{% if sc.change %} – {{ sc.change }}{% endif %}</li>
               {% endfor %}
             </ul>
             {% endif %}
@@ -206,7 +210,7 @@
               <p class="font-semibold flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a7 7 0 00-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 002 2h4a2 2 0 002-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 00-7-7z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 21h6"/></svg>Strategie</p>
               <ul class="mt-1 space-y-1 text-sm">
                 {% for se in entry.strategy_evaluation %}
-                <li class="flex items-start"><svg class="w-4 h-4 mr-2 text-purple-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a7 7 0 00-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 002 2h4a2 2 0 002-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 00-7-7z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 21h6"/></svg><span>{{ se.strategy }}: {{ se.helpful }}{% if se.reason %} – {{ se.reason }}{% endif %} (erneut: {{ se.reuse }})</span></li>
+                <li class="flex items-start"><svg class="w-4 h-4 mr-2 text-purple-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a7 7 0 00-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 002 2h4a2 2 0 002-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 00-7-7z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 21h6"/></svg><span>{{ se.strategy }}: {{ se.helpful }}{% if se.comment %} – {{ se.comment }}{% endif %} (erneut: {{ se.reuse }})</span></li>
                 {% endfor %}
               </ul>
             </div>
@@ -303,6 +307,12 @@
 let currentEntryId = null;
 const chatHistory = {planning: [], execution: [], reflection: []};
 
+const urls = {
+  planning: "{% url 'chat_planning' %}",
+  execution: id => "{% url 'chat_execution' 0 %}".replace("/0/", `/${id}/`),
+  reflection: id => "{% url 'chat_reflection' 0 %}".replace("/0/", `/${id}/`)
+};
+
 function getCookie(name) {
   let cookieValue = null;
   if (document.cookie && document.cookie !== '') {
@@ -342,10 +352,10 @@ function submitChat(event, type) {
 function sendMessage(type, message) {
   if (message) chatHistory[type].push({role: 'user', content: message});
   const url = type === 'planning'
-    ? '{% url "chat_planning" %}'
+    ? urls.planning
     : type === 'execution'
-      ? `/student/api/chat/execution/${currentEntryId}/`
-      : `/student/api/chat/reflection/${currentEntryId}/`;
+      ? urls.execution(currentEntryId)
+      : urls.reflection(currentEntryId);
   fetch(url, {
     method: 'POST',
     headers: {
@@ -356,7 +366,15 @@ function sendMessage(type, message) {
   })
   .then(r => r.json())
   .then(data => {
-    chatHistory[type].push({role: 'assistant', content: data.reply});
+    if (data.error) {
+      chatHistory[type].push({role: 'assistant', content: data.error});
+    } else {
+      chatHistory[type].push({role: 'assistant', content: data.reply});
+    }
+    renderChat(type);
+  })
+  .catch(() => {
+    chatHistory[type].push({role: 'assistant', content: '(Netzwerkfehler – bitte erneut senden)'});
     renderChat(type);
   });
 }

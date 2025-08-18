@@ -35,7 +35,7 @@ def _entry_nested(entry):
                 "Strategie": item.get("strategy"),
                 "Genutzt": item.get("used"),
                 "Sinnvoll": item.get("useful"),
-                "Anpassung": item.get("adaptation"),
+                "Anpassung": item.get("change"),
             }
             for item in lst
         ]
@@ -105,8 +105,8 @@ def _entry_flat(entry):
                 txt += f" – {'genutzt' if item['used'] else 'nicht genutzt'}"
             if item.get("useful") is not None:
                 txt += f", {'sinnvoll' if item['useful'] else 'nicht sinnvoll'}"
-            if item.get("adaptation"):
-                txt += f" – {item['adaptation']}"
+            if item.get("change"):
+                txt += f" – {item['change']}"
             parts.append(txt)
         return "; ".join(parts)
 

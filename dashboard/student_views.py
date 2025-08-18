@@ -7,7 +7,6 @@ from django.views.decorators.http import require_POST
 import json
 from django.urls import reverse
 from datetime import date
-from openai import OpenAI
 from .forms import (
     PseudoForm,
     PasswordLoginForm,
@@ -50,6 +49,10 @@ def _openai_client():
     settings = AppSettings.load()
     if not settings.openai_api_key:
         return None
+    try:
+        from openai import OpenAI
+    except ModuleNotFoundError:
+        return None
     return OpenAI(api_key=settings.openai_api_key)
 
 
@@ -59,9 +62,9 @@ PLAN_SYSTEM_PROMPT = (
     "nach anerkannten SRL-Modellen. Sprich kurz, freundlich, konkret. Eine "
     "Frage pro Nachricht. Ziel: gültiges JSON für POST \"/dashboard/api/entry/new/\". "
     "Halte dich exakt an das geforderte Schema und an HH:MM. Prüfe Summen gegen "
-    "Minutenlimit (Standard 90 Min, außer Limit im Kontext). Bei API-Fehlern: "
-    "lies error/errors, erkläre präzise, stelle Korrekturfragen, sende korrigiertes "
-    "JSON erneut."
+    "Minutenlimit (Standard 90 Min, außer Limit im Kontext). Tool-Antworten "
+    "enthalten 'status' und 'body'. Bei status != 200: lies error/errors im body, "
+    "erkläre präzise, stelle Korrekturfragen, sende korrigiertes JSON erneut."
 )
 
 PLAN_DEVELOPER_PROMPT = (
@@ -88,7 +91,8 @@ EXEC_SYSTEM_PROMPT = (
     "Du bist ein SRL-Coach für die Durchführungsphase. Dokumentiere Schritte, "
     "reale Zeiten, Strategie-Check, Probleme und Emotionen. Eine Frage pro "
     "Nachricht. Halte dich exakt an das JSON-Schema der Durchführungsphase. "
-    "Prüfe HH:MM und Summen. Bei API-Fehlern: präzise Korrektur."
+    "Prüfe HH:MM und Summen. Tool-Antworten enthalten 'status' und 'body'. Bei "
+    "status != 200: präzise Korrektur basierend auf error/errors."
 )
 
 EXEC_DEVELOPER_PROMPT = (
@@ -107,8 +111,8 @@ REFL_SYSTEM_PROMPT = (
     "Du bist ein SRL-Coach für die Reflexionsphase. Erfasse Zielerreichung, "
     "Strategiewirkung, Gelerntes, Realismus, Abweichungen, Motivation, nächste "
     "Phase und Strategie-Ausblick. Halte dich exakt an das JSON-Schema der "
-    "Reflexion. Knappe, präzise Sprache. Bei API-Fehlern: benenne präzise, "
-    "korrigiere, re-POST."
+    "Reflexion. Knappe, präzise Sprache. Tool-Antworten enthalten 'status' und "
+    "'body'. Bei status != 200: benenne Fehler präzise, korrigiere, re-POST."
 )
 
 REFL_DEVELOPER_PROMPT = (
@@ -116,7 +120,7 @@ REFL_DEVELOPER_PROMPT = (
     "1. Lade die heute geplanten Ziele (Reihenfolge = goal_achievement).\n"
     "2. Führe die Schritte 1–7 aus.\n"
     "3. Baue JSON exakt: { 'goal_achievement':[{'achievement':'vollständig','comment':'...'}],"
-    " 'strategy_evaluation':[{'helpful':true,'comment':'...','reuse':true}],"
+    " 'strategy_evaluation':[{'strategy':'...','helpful':true,'comment':'...','reuse':true}],"
     " 'learned_subject':'...', 'learned_work':'...', 'planning_realistic':'...',"
     " 'planning_deviations':'...', 'motivation_rating':'7/10', 'motivation_improve':'...',"
     " 'next_phase':'...', 'strategy_outlook':'...' }.\n"
@@ -148,7 +152,7 @@ def _call_phase_api(phase, request, payload, entry_id=None):
 def _chat_phase(request, phase, messages, entry_id=None):
     client = _openai_client()
     if client is None:
-        return JsonResponse({"error": "OpenAI API key not configured"}, status=400)
+        return {"error": "OpenAI API key not configured"}
 
     student = Student.objects.get(id=request.session["student_id"])
     diary = _student_diary_json(student)
@@ -175,10 +179,9 @@ def _chat_phase(request, phase, messages, entry_id=None):
         "reflection": REFL_DEVELOPER_PROMPT,
     }[phase]
 
-    full_messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "developer", "content": developer_prompt},
-    ] + messages
+    combined_prompt = f"{system_prompt}\n\n{developer_prompt}\n\nMinutenlimit: {minute_limit}"
+
+    full_messages = [{"role": "system", "content": combined_prompt}] + messages
 
     tools = []
     if phase == "planning":
@@ -320,11 +323,12 @@ def _chat_phase(request, phase, messages, entry_id=None):
                                 "items": {
                                     "type": "object",
                                     "properties": {
+                                        "strategy": {"type": "string"},
                                         "helpful": {"type": "boolean"},
                                         "comment": {"type": "string"},
                                         "reuse": {"type": "boolean"},
                                     },
-                                    "required": ["helpful", "comment", "reuse"],
+                                    "required": ["strategy", "helpful", "comment", "reuse"],
                                 },
                             },
                             "learned_subject": {"type": "string"},
@@ -353,12 +357,15 @@ def _chat_phase(request, phase, messages, entry_id=None):
             }
         ]
 
-    while True:
-        completion = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=full_messages,
-            tools=tools,
-        )
+    for _ in range(8):
+        try:
+            completion = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=full_messages,
+                tools=tools,
+            )
+        except Exception as e:
+            return {"error": f"OpenAI error: {e.__class__.__name__}"}
         message = completion.choices[0].message
         finish = completion.choices[0].finish_reason
         if message.content:
@@ -371,17 +378,22 @@ def _chat_phase(request, phase, messages, entry_id=None):
             for call in message.tool_calls:
                 args = json.loads(call.function.arguments or "{}")
                 api_resp = _call_phase_api(phase, request, args, entry_id)
-                tool_content = api_resp.content.decode()
+                tool_payload = {
+                    "status": getattr(api_resp, "status_code", 0),
+                    "body": api_resp.content.decode(errors="replace"),
+                    "content_type": getattr(api_resp, "headers", {}).get("Content-Type", ""),
+                }
                 full_messages.append(
                     {
                         "role": "tool",
                         "tool_call_id": call.id,
                         "name": call.function.name,
-                        "content": tool_content,
+                        "content": json.dumps(tool_payload, ensure_ascii=False),
                     }
                 )
             continue
-        return message.content or ""
+        return {"reply": message.content or ""}
+    return {"error": "Conversation loop limit reached"}
 
 
 def student_login(request):
@@ -620,6 +632,9 @@ def add_execution_json(request, entry_id):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
+    for sc in payload.get("strategy_check", []):
+        if "adaptation" in sc and "change" not in sc:
+            sc["change"] = sc.pop("adaptation")
     form_data = {
         "steps": json.dumps(payload.get("steps", [])),
         "time_usage": json.dumps(payload.get("time_usage", [])),
@@ -649,7 +664,7 @@ def add_reflection_json(request, entry_id):
     Expected JSON format:
     {
       "goal_achievement": [{"achievement": "str", "comment": "str"}, ...],
-      "strategy_evaluation": [{"helpful": bool, "comment": "str", "reuse": bool}, ...],
+      "strategy_evaluation": [{"strategy": "str", "helpful": bool, "comment": "str", "reuse": bool}, ...],
       "learned_subject": "str",
       "learned_work": "str",
       "planning_realistic": "str",
@@ -667,6 +682,9 @@ def add_reflection_json(request, entry_id):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
+    for se in payload.get("strategy_evaluation", []):
+        if "reason" in se and "comment" not in se:
+            se["comment"] = se.pop("reason")
     form_data = {
         "goal_achievement": json.dumps(payload.get("goal_achievement", [])),
         "strategy_evaluation": json.dumps(payload.get("strategy_evaluation", [])),
@@ -695,8 +713,13 @@ def chat_planning(request):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
     messages = payload.get("messages", [])
-    reply = _chat_phase(request, "planning", messages)
-    return JsonResponse({"reply": reply})
+    result = _chat_phase(request, "planning", messages)
+    if "error" in result:
+        status = 502 if result["error"].startswith("OpenAI") else 400
+        if result["error"] == "Conversation loop limit reached":
+            status = 500
+        return JsonResponse(result, status=status)
+    return JsonResponse({"reply": result["reply"]})
 
 
 @student_required
@@ -707,8 +730,13 @@ def chat_execution(request, entry_id):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
     messages = payload.get("messages", [])
-    reply = _chat_phase(request, "execution", messages, entry_id=entry_id)
-    return JsonResponse({"reply": reply})
+    result = _chat_phase(request, "execution", messages, entry_id=entry_id)
+    if "error" in result:
+        status = 502 if result["error"].startswith("OpenAI") else 400
+        if result["error"] == "Conversation loop limit reached":
+            status = 500
+        return JsonResponse(result, status=status)
+    return JsonResponse({"reply": result["reply"]})
 
 
 @student_required
@@ -719,5 +747,10 @@ def chat_reflection(request, entry_id):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
     messages = payload.get("messages", [])
-    reply = _chat_phase(request, "reflection", messages, entry_id=entry_id)
-    return JsonResponse({"reply": reply})
+    result = _chat_phase(request, "reflection", messages, entry_id=entry_id)
+    if "error" in result:
+        status = 502 if result["error"].startswith("OpenAI") else 400
+        if result["error"] == "Conversation loop limit reached":
+            status = 500
+        return JsonResponse(result, status=status)
+    return JsonResponse({"reply": result["reply"]})

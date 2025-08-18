@@ -39,7 +39,7 @@
     {% if entry.strategy_check %}
     <p><strong>Strategie-Check:</strong>
       {% for sc in entry.strategy_check %}
-        {{ sc.strategy }}{% if sc.used is not None %} – {{ sc.used|yesno:'genutzt,nicht genutzt' }}{% endif %}{% if sc.useful is not None %}, {{ sc.useful|yesno:'sinnvoll,nicht sinnvoll' }}{% endif %}{% if sc.adaptation %} – {{ sc.adaptation }}{% endif %}{% if not forloop.last %}; {% endif %}
+        {{ sc.strategy }}{% if sc.used is not None %} – {{ sc.used|yesno:'genutzt,nicht genutzt' }}{% endif %}{% if sc.useful is not None %}, {{ sc.useful|yesno:'sinnvoll,nicht sinnvoll' }}{% endif %}{% if sc.change %} – {{ sc.change }}{% endif %}{% if not forloop.last %}; {% endif %}
       {% endfor %}
     </p>
     {% endif %}
