@@ -116,6 +116,20 @@ def _entry_flat(entry):
             for item in lst
         )
 
+    def _se(lst):
+        parts = []
+        for item in lst:
+            txt = item.get("strategy", "")
+            hv = item.get("helpful")
+            if hv is not None:
+                txt += f": {hv}"
+            if item.get("comment"):
+                txt += f" – {item['comment']}"
+            if "reuse" in item:
+                txt += f" (erneut: {item['reuse']})"
+            parts.append(txt)
+        return "; ".join(parts)
+
     return {
         "Datum": str(entry.session_date),
         "Ziele": _join(entry.goals),
@@ -130,7 +144,7 @@ def _entry_flat(entry):
         "Probleme": entry.problems,
         "Emotionen": entry.emotions,
         "Zielerreichung": _ga(entry.goal_achievement),
-        "Strategie-Bewertung": _join(entry.strategy_evaluation),
+        "Strategie-Bewertung": _se(entry.strategy_evaluation),
         "Gelerntes (Inhaltlich)": entry.learned_subject,
         "Gelerntes (Arbeitsweise)": entry.learned_work,
         "War die Planung realistisch?": entry.planning_realistic,

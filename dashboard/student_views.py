@@ -17,6 +17,7 @@ from .forms import (
 )
 from .export_views import _entry_nested
 from django.test import RequestFactory
+import re
 
 
 def _total_minutes(items):
@@ -31,6 +32,18 @@ def _total_minutes(items):
         except (ValueError, AttributeError):
             continue
     return total
+
+
+TIME_RE = re.compile(r"^\d{1,2}:\d{2}$")
+
+
+def _normalize_time(t):
+    if not isinstance(t, str) or not TIME_RE.match(t):
+        raise ValueError("HH:MM erwartet")
+    h, m = map(int, t.split(":"))
+    if h < 0 or m < 0 or h > 23 or m > 59:
+        raise ValueError("Ungültige Zeit")
+    return f"{h:02d}:{m:02d}"
 
 
 def _student_diary_json(student):
@@ -48,12 +61,12 @@ def _student_diary_json(student):
 def _openai_client():
     settings = AppSettings.load()
     if not settings.openai_api_key:
-        return None
+        return None, settings
     try:
         from openai import OpenAI
     except ModuleNotFoundError:
-        return None
-    return OpenAI(api_key=settings.openai_api_key)
+        return None, settings
+    return OpenAI(api_key=settings.openai_api_key), settings
 
 
 # System and developer prompts for each phase
@@ -84,7 +97,8 @@ PLAN_DEVELOPER_PROMPT = (
     "5. Sende es an /dashboard/api/entry/new/ und speichere entry_id für die nächste Phase.\n"
     "6. Wenn 400/Fehler: zeige fehlerhafte Felder, frage gezielt nach Korrektur, "
     "validiere erneut, re-POST.\n"
-    "7. Verwende knappe Bullet-Prompts; maximal zwei Optionen pro Frage."
+    "7. Verwende knappe Bullet-Prompts; maximal zwei Optionen pro Frage.\n"
+    "Maximal ein Submit pro Sitzung."
 )
 
 EXEC_SYSTEM_PROMPT = (
@@ -104,7 +118,8 @@ EXEC_DEVELOPER_PROMPT = (
     " 'problems':'...', 'emotions':'...' }.\n"
     "4. POST an /dashboard/api/entry/<entry_id>/execution/.\n"
     "5. Fehlerhandling wie beschrieben.\n"
-    "6. Stil: knappe Stichworte, lösungsorientiert."
+    "6. Stil: knappe Stichworte, lösungsorientiert.\n"
+    "Maximal ein Submit pro Sitzung."
 )
 
 REFL_SYSTEM_PROMPT = (
@@ -127,6 +142,7 @@ REFL_DEVELOPER_PROMPT = (
     "4. POST an /dashboard/api/entry/<entry_id>/reflection/.\n"
     "5. Fehlerhandling wie beschrieben.\n"
     "6. Vorschläge aus Planung/Durchführung dürfen gespiegelt werden."
+    "\nMaximal ein Submit pro Sitzung."
 )
 
 
@@ -150,9 +166,16 @@ def _call_phase_api(phase, request, payload, entry_id=None):
 
 
 def _chat_phase(request, phase, messages, entry_id=None):
-    client = _openai_client()
+    client, app_settings = _openai_client()
     if client is None:
         return {"error": "OpenAI API key not configured"}
+
+    model = app_settings.openai_model or "gpt-4o-mini"
+    temperature = (
+        app_settings.openai_temperature
+        if app_settings.openai_temperature is not None
+        else 0.2
+    )
 
     student = Student.objects.get(id=request.session["student_id"])
     diary = _student_diary_json(student)
@@ -357,12 +380,14 @@ def _chat_phase(request, phase, messages, entry_id=None):
             }
         ]
 
+    submitted = False
     for _ in range(8):
         try:
             completion = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model=model,
                 messages=full_messages,
                 tools=tools,
+                temperature=temperature,
             )
         except Exception as e:
             return {"error": f"OpenAI error: {e.__class__.__name__}"}
@@ -371,6 +396,12 @@ def _chat_phase(request, phase, messages, entry_id=None):
         if message.content:
             full_messages.append({"role": message.role, "content": message.content})
         if finish == "tool_calls" and message.tool_calls:
+            if submitted:
+                full_messages.append(
+                    {"role": "assistant", "content": "(Hinweis: Daten bereits gespeichert)"}
+                )
+                break
+            submitted = True
             full_messages[-1] = {
                 "role": message.role,
                 "tool_calls": message.tool_calls,
@@ -584,6 +615,15 @@ def create_entry_json(request):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
+    normalized = []
+    for idx, item in enumerate(payload.get("time_planning", [])):
+        try:
+            item["time"] = _normalize_time(item.get("time"))
+        except ValueError as e:
+            return JsonResponse({"error": f"time_planning[{idx}].time {e}"}, status=400)
+        normalized.append(item)
+    payload["time_planning"] = normalized
+
     form_data = {
         field: json.dumps(payload.get(field, []))
         for field in [
@@ -631,6 +671,15 @@ def add_execution_json(request, entry_id):
         payload = json.loads(request.body.decode("utf-8"))
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    normalized = []
+    for idx, item in enumerate(payload.get("time_usage", [])):
+        try:
+            item["time"] = _normalize_time(item.get("time"))
+        except ValueError as e:
+            return JsonResponse({"error": f"time_usage[{idx}].time {e}"}, status=400)
+        normalized.append(item)
+    payload["time_usage"] = normalized
 
     for sc in payload.get("strategy_check", []):
         if "adaptation" in sc and "change" not in sc:

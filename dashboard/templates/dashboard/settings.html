@@ -9,10 +9,16 @@
 <h1 class="text-2xl font-bold mb-6">Einstellungen</h1>
 <div class="space-y-8">
     <div>
-        <h2 class="text-xl font-semibold mb-2">OpenAI API Key</h2>
-        <div class="flex items-center">
+        <h2 class="text-xl font-semibold mb-2">OpenAI</h2>
+        <div class="flex items-center mb-2">
             <input type="text" id="openai_key" value="{{ settings.openai_api_key }}" class="border p-2 flex-grow" placeholder="OpenAI API Key">
             <span id="api-key-status" class="w-4 h-4 rounded-full ml-2 {% if key_valid %}bg-green-500{% else %}bg-red-500{% endif %}"></span>
+        </div>
+        <div class="flex items-center mb-2">
+            <input type="text" id="openai_model" value="{{ settings.openai_model }}" class="border p-2 flex-grow" placeholder="OpenAI Model">
+        </div>
+        <div class="flex items-center">
+            <input type="number" step="0.1" min="0" max="2" id="openai_temperature" value="{{ settings.openai_temperature|default:'' }}" class="border p-2 flex-grow" placeholder="Temperatur (0-2)">
         </div>
     </div>
 </div>
@@ -32,26 +38,35 @@ function getCookie(name) {
     }
     return cookieValue;
 }
-const input = document.getElementById('openai_key');
+const keyInput = document.getElementById('openai_key');
+const modelInput = document.getElementById('openai_model');
+const tempInput = document.getElementById('openai_temperature');
 const status = document.getElementById('api-key-status');
 let timeout = null;
-input.addEventListener('input', function() {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => {
-        fetch("{% url 'update_openai_key' %}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken'),
-            },
-            body: JSON.stringify({openai_api_key: input.value})
+function sendSettings(){
+    fetch("{% url 'update_openai_settings' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({
+            openai_api_key: keyInput.value,
+            openai_model: modelInput.value,
+            openai_temperature: tempInput.value
         })
-        .then(response => response.json())
-        .then(data => {
-            status.classList.remove('bg-red-500', 'bg-green-500');
-            status.classList.add(data.valid ? 'bg-green-500' : 'bg-red-500');
-        });
-    }, 500);
+    })
+    .then(response => response.json())
+    .then(data => {
+        status.classList.remove('bg-red-500', 'bg-green-500');
+        status.classList.add(data.valid ? 'bg-green-500' : 'bg-red-500');
+    });
+}
+[keyInput, modelInput, tempInput].forEach(el => {
+    el.addEventListener('input', function(){
+        clearTimeout(timeout);
+        timeout = setTimeout(sendSettings, 500);
+    });
 });
 </script>
 {% endblock %}

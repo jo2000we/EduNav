@@ -52,7 +52,13 @@
       {% endfor %}
     </p>
     {% endif %}
-    {% if entry.strategy_evaluation %}<p><strong>Strategie-Bewertung:</strong> {{ entry.strategy_evaluation|join:", " }}</p>{% endif %}
+    {% if entry.strategy_evaluation %}
+    <p><strong>Strategie-Bewertung:</strong>
+      {% for se in entry.strategy_evaluation %}
+        {{ se.strategy }}: {{ se.helpful }}{% if se.comment %} – {{ se.comment }}{% endif %} (erneut: {{ se.reuse }}){% if not forloop.last %}; {% endif %}
+      {% endfor %}
+    </p>
+    {% endif %}
     {% if entry.learned_subject %}<p><strong>Gelerntes (Inhaltlich):</strong> {{ entry.learned_subject }}</p>{% endif %}
     {% if entry.learned_work %}<p><strong>Gelerntes (Arbeitsweise):</strong> {{ entry.learned_work }}</p>{% endif %}
     {% if entry.planning_realistic %}<p><strong>War die Planung realistisch?</strong> {{ entry.planning_realistic }}</p>{% endif %}
