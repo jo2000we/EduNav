@@ -1,8 +1,12 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
-from .models import Classroom, Student
+from django.views.decorators.http import require_POST
+import json
+import requests
+
+from .models import Classroom, Student, AppSettings
 from .forms import ClassroomForm, StudentForm
 
 
@@ -95,3 +99,40 @@ def student_detail(request, classroom_id, student_id):
     classroom = get_object_or_404(Classroom, id=classroom_id, teacher=request.user)
     student = get_object_or_404(Student, id=student_id, classroom=classroom)
     return render(request, "dashboard/student_detail.html", {"student": student})
+
+
+def validate_openai_key(key: str) -> bool:
+    if not key:
+        return False
+    try:
+        response = requests.get(
+            "https://api.openai.com/v1/models",
+            headers={"Authorization": f"Bearer {key}"},
+            timeout=5,
+        )
+        return response.status_code == 200
+    except requests.RequestException:
+        return False
+
+
+@login_required
+def settings_view(request):
+    settings = AppSettings.load()
+    key_valid = validate_openai_key(settings.openai_api_key)
+    return render(
+        request,
+        "dashboard/settings.html",
+        {"settings": settings, "key_valid": key_valid},
+    )
+
+
+@login_required
+@require_POST
+def update_openai_key(request):
+    data = json.loads(request.body.decode("utf-8"))
+    key = data.get("openai_api_key", "")
+    settings = AppSettings.load()
+    settings.openai_api_key = key
+    settings.save()
+    valid = validate_openai_key(key)
+    return JsonResponse({"valid": valid})
