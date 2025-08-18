@@ -55,15 +55,40 @@ class StudentLoginForm(forms.Form):
 class OverallGoalForm(forms.ModelForm):
     class Meta:
         model = Student
-        fields = ["overall_goal"]
+        fields = ["overall_goal", "overall_goal_due_date"]
         widgets = {
             "overall_goal": forms.Textarea(
                 attrs={
                     "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
                     "rows": 3,
                 }
-            )
+            ),
+            "overall_goal_due_date": forms.DateInput(
+                attrs={
+                    "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
+                    "type": "date",
+                }
+            ),
         }
+
+
+class ClassOverallGoalForm(forms.Form):
+    overall_goal = forms.CharField(
+        widget=forms.Textarea(
+            attrs={
+                "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
+                "rows": 3,
+            }
+        )
+    )
+    overall_goal_due_date = forms.DateField(
+        widget=forms.DateInput(
+            attrs={
+                "class": "block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 p-2.5",
+                "type": "date",
+            }
+        )
+    )
 
 
 import json

@@ -21,6 +21,11 @@ urlpatterns = [
         name="student_detail",
     ),
     path(
+        "classrooms/<int:classroom_id>/overall-goal/",
+        views.set_class_overall_goal,
+        name="class_overall_goal",
+    ),
+    path(
         "classrooms/<int:classroom_id>/export/",
         export_views.export_classroom_data,
         name="classroom_export",
