@@ -12,6 +12,7 @@ from .forms import (
     StudentForm,
     ClassOverallGoalForm,
     ClassEntryLimitForm,
+    ClassTimeLimitForm,
 )
 
 
@@ -89,6 +90,29 @@ def set_class_entry_limits(request, classroom_id):
         return render(
             request,
             "dashboard/class_entry_limits_form.html",
+            {"form": form, "classroom": classroom},
+        )
+    return redirect("classroom_list")
+
+
+@login_required
+def set_class_time_limit(request, classroom_id):
+    classroom = get_object_or_404(Classroom, id=classroom_id, teacher=request.user)
+    if request.method == "POST":
+        form = ClassTimeLimitForm(request.POST, instance=classroom)
+        if form.is_valid():
+            form.save()
+            if request.headers.get("HX-Request"):
+                response = HttpResponse()
+                response["HX-Redirect"] = reverse("classroom_list")
+                return response
+            return redirect("classroom_list")
+    else:
+        form = ClassTimeLimitForm(instance=classroom)
+    if request.headers.get("HX-Request"):
+        return render(
+            request,
+            "dashboard/class_time_limit_form.html",
             {"form": form, "classroom": classroom},
         )
     return redirect("classroom_list")
