@@ -18,6 +18,7 @@ from .forms import (
 from .export_views import _entry_nested
 from django.test import RequestFactory
 import re
+import time
 
 
 def _total_minutes(items):
@@ -82,11 +83,13 @@ def _openai_client():
 PLAN_SYSTEM_PROMPT = (
     "Du bist ein SRL-Coach für die Planungsphase. Arbeite strikt phasengetreu "
     "nach anerkannten SRL-Modellen. Sprich kurz, freundlich, konkret. Eine "
-    "Frage pro Nachricht. Ziel: gültiges JSON für POST \"/dashboard/api/entry/new/\". "
+    "Frage pro Nachricht. Keine Listen, kein Markdown. Maximal zwei Sätze (<240 Zeichen) pro Nachricht. "
+    "Ziel: gültiges JSON für POST \"/dashboard/api/entry/new/\". "
     "Halte dich exakt an das geforderte Schema und an HH:MM. Prüfe Summen gegen "
     "Minutenlimit (Standard 90 Min, außer Limit im Kontext). Tool-Antworten "
     "enthalten 'status' und 'body'. Bei status != 200: lies error/errors im body, "
-    "erkläre präzise, stelle Korrekturfragen, sende korrigiertes JSON erneut."
+    "erkläre präzise, stelle Korrekturfragen, sende korrigiertes JSON erneut. "
+    "Nach erfolgreichem Speichern sofort STOPP. Sende nur: 'Planung gespeichert. entry_id: <ID>'. Keine weiteren Inhalte, keine Ratschläge."
 )
 
 PLAN_DEVELOPER_PROMPT = (
@@ -107,15 +110,18 @@ PLAN_DEVELOPER_PROMPT = (
     "6. Wenn 400/Fehler: zeige fehlerhafte Felder, frage gezielt nach Korrektur, "
     "validiere erneut, re-POST.\n"
     "7. Verwende knappe Bullet-Prompts; maximal zwei Optionen pro Frage.\n"
-    "Maximal ein Submit pro Sitzung."
+    "Maximal ein Submit pro Sitzung.\n"
+    "Keine Listen, kein Markdown. Maximal zwei Sätze (<240 Zeichen) pro Nachricht. Nach erfolgreichem Speichern sofort stoppen und nur 'Planung gespeichert. entry_id: <ID>' senden."
 )
 
 EXEC_SYSTEM_PROMPT = (
     "Du bist ein SRL-Coach für die Durchführungsphase. Dokumentiere Schritte, "
     "reale Zeiten, Strategie-Check, Probleme und Emotionen. Eine Frage pro "
-    "Nachricht. Halte dich exakt an das JSON-Schema der Durchführungsphase. "
+    "Nachricht. Keine Listen, kein Markdown. Maximal zwei Sätze (<240 Zeichen) pro Nachricht. "
+    "Halte dich exakt an das JSON-Schema der Durchführungsphase. "
     "Prüfe HH:MM und Summen. Tool-Antworten enthalten 'status' und 'body'. Bei "
-    "status != 200: präzise Korrektur basierend auf error/errors."
+    "status != 200: präzise Korrektur basierend auf error/errors. "
+    "Nach erfolgreichem Speichern sofort STOPP. Sende nur: 'Durchführung gespeichert.'"
 )
 
 EXEC_DEVELOPER_PROMPT = (
@@ -128,15 +134,18 @@ EXEC_DEVELOPER_PROMPT = (
     "4. POST an /dashboard/api/entry/<entry_id>/execution/.\n"
     "5. Fehlerhandling wie beschrieben.\n"
     "6. Stil: knappe Stichworte, lösungsorientiert.\n"
-    "Maximal ein Submit pro Sitzung."
+    "Maximal ein Submit pro Sitzung.\n"
+    "Keine Listen, kein Markdown. Maximal zwei Sätze (<240 Zeichen) pro Nachricht. Nach erfolgreichem Speichern sofort stoppen und nur 'Durchführung gespeichert.' senden."
 )
 
 REFL_SYSTEM_PROMPT = (
     "Du bist ein SRL-Coach für die Reflexionsphase. Erfasse Zielerreichung, "
     "Strategiewirkung, Gelerntes, Realismus, Abweichungen, Motivation, nächste "
-    "Phase und Strategie-Ausblick. Halte dich exakt an das JSON-Schema der "
+    "Phase und Strategie-Ausblick. Eine Frage pro Nachricht. Keine Listen, kein Markdown. "
+    "Maximal zwei Sätze (<240 Zeichen) pro Nachricht. Halte dich exakt an das JSON-Schema der "
     "Reflexion. Knappe, präzise Sprache. Tool-Antworten enthalten 'status' und "
-    "'body'. Bei status != 200: benenne Fehler präzise, korrigiere, re-POST."
+    "'body'. Bei status != 200: benenne Fehler präzise, korrigiere, re-POST. "
+    "Nach erfolgreichem Speichern sofort STOPP. Sende nur: 'Reflexion gespeichert.'"
 )
 
 REFL_DEVELOPER_PROMPT = (
@@ -150,8 +159,9 @@ REFL_DEVELOPER_PROMPT = (
     " 'next_phase':'...', 'strategy_outlook':'...' }.\n"
     "4. POST an /dashboard/api/entry/<entry_id>/reflection/.\n"
     "5. Fehlerhandling wie beschrieben.\n"
-    "6. Vorschläge aus Planung/Durchführung dürfen gespiegelt werden."
-    "\nMaximal ein Submit pro Sitzung."
+    "6. Vorschläge aus Planung/Durchführung dürfen gespiegelt werden.\n"
+    "Maximal ein Submit pro Sitzung.\n"
+    "Keine Listen, kein Markdown. Maximal zwei Sätze (<240 Zeichen) pro Nachricht. Nach erfolgreichem Speichern sofort stoppen und nur 'Reflexion gespeichert.' senden."
 )
 
 
@@ -409,15 +419,26 @@ def _chat_phase(request, phase, messages, entry_id=None):
     submitted = False
     current_entry_id = entry_id
     for _ in range(8):
-        try:
-            completion = client.chat.completions.create(
-                model=model,
-                messages=full_messages,
-                tools=tools,
-                temperature=temperature,
-            )
-        except Exception as e:
-            return {"error": f"OpenAI error: {e.__class__.__name__}"}
+        for attempt in range(2):
+            try:
+                completion = client.chat.completions.create(
+                    model=model,
+                    messages=full_messages,
+                    tools=tools,
+                    temperature=temperature,
+                    max_tokens=200,
+                )
+                break
+            except Exception as e:
+                err_text = str(e)
+                if "RateLimit" in e.__class__.__name__ or "rate limit" in err_text.lower():
+                    if attempt == 0:
+                        time.sleep(1)
+                        continue
+                    return {"error": "Gerade ausgelastet. Bitte in ein paar Sekunden erneut senden."}
+                return {"error": f"OpenAI error: {e.__class__.__name__}"}
+        else:
+            return {"error": "Gerade ausgelastet. Bitte in ein paar Sekunden erneut senden."}
         message = completion.choices[0].message
         finish = completion.choices[0].finish_reason
         if finish == "tool_calls" and message.tool_calls:
@@ -430,17 +451,25 @@ def _chat_phase(request, phase, messages, entry_id=None):
                     )
                     full_messages.append({"role": "assistant", "content": msg})
                     return {"reply": msg, "entry_id": current_entry_id}
-                submitted = True
                 full_messages.append({"role": message.role, "tool_calls": [call]})
                 args = json.loads(call.function.arguments or "{}")
                 api_resp = _call_phase_api(phase, request, args, current_entry_id)
-                if phase == "planning" and getattr(api_resp, "status_code", 0) == 200:
+                status = getattr(api_resp, "status_code", 0)
+                if phase == "planning" and status == 200:
                     try:
                         current_entry_id = json.loads(api_resp.content).get("entry_id")
                     except Exception:
                         pass
+                if status == 200:
+                    submitted = True
+                    msg = (
+                        f"Planung gespeichert. entry_id: {current_entry_id}"
+                        if phase == "planning"
+                        else f"{phase.capitalize()} gespeichert."
+                    )
+                    return {"reply": msg, "entry_id": current_entry_id}
                 tool_payload = {
-                    "status": getattr(api_resp, "status_code", 0),
+                    "status": status,
                     "body": api_resp.content.decode(errors="replace"),
                     "content_type": getattr(api_resp, "headers", {}).get("Content-Type", ""),
                 }
