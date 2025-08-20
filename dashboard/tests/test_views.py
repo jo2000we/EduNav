@@ -202,3 +202,45 @@ def test_execution_time_usage_only_checked(client):
     entry.refresh_from_db()
     assert response.status_code == 200
     assert entry.time_usage == usage
+
+
+@pytest.mark.django_db
+def test_reflection_feedback_missing_entry_id_returns_400(client):
+    teacher = User.objects.create_user(username="t1", password="pass")
+    classroom = Classroom.objects.create(
+        teacher=teacher,
+        name="Klasse A",
+        group_type="CONTROL",
+    )
+    student = Student.objects.create(classroom=classroom, pseudonym="S1")
+    session = client.session
+    session["student_id"] = student.id
+    session.save()
+
+    response = client.post(
+        reverse("reflection_feedback"),
+        data=json.dumps({"reflection": {}}),
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.django_db
+def test_reflection_feedback_invalid_entry_returns_404(client):
+    teacher = User.objects.create_user(username="t1", password="pass")
+    classroom = Classroom.objects.create(
+        teacher=teacher,
+        name="Klasse A",
+        group_type="CONTROL",
+    )
+    student = Student.objects.create(classroom=classroom, pseudonym="S1")
+    session = client.session
+    session["student_id"] = student.id
+    session.save()
+
+    response = client.post(
+        reverse("reflection_feedback"),
+        data=json.dumps({"reflection": {}, "entry_id": 999}),
+        content_type="application/json",
+    )
+    assert response.status_code == 404
