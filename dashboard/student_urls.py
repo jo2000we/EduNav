@@ -39,4 +39,14 @@ urlpatterns = [
         student_views.reset_planning_feedback,
         name="planning_feedback_reset",
     ),
+    path(
+        "api/reflection/feedback/",
+        student_views.reflection_feedback,
+        name="reflection_feedback",
+    ),
+    path(
+        "api/reflection/feedback/reset/",
+        student_views.reset_reflection_feedback,
+        name="reflection_feedback_reset",
+    ),
 ]
