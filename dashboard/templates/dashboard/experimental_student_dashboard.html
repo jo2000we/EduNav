@@ -444,8 +444,12 @@
               </div>
             </div>
 
+            <div id="reflection-ai-feedback-{{ entry.id }}" class="hidden mb-4 p-2 border rounded bg-gray-50 text-sm"></div>
+
             <div class="flex justify-end space-x-2 mt-4">
-              <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">Speichern</button>
+              <button type="button" id="get-reflection-feedback-{{ entry.id }}" class="bg-blue-500 text-white px-4 py-2 rounded">Feedback erhalten</button>
+              <button type="submit" id="reflection-save-{{ entry.id }}" class="bg-green-500 text-white px-4 py-2 rounded" disabled>Speichern</button>
+              <button type="button" data-modal-hide="reflectionModal-{{ entry.id }}" class="bg-red-500 text-white px-4 py-2 rounded">Abbrechen</button>
             </div>
           </form>
         </div>
@@ -767,145 +771,213 @@ function setupExecutionModal(id) {
 
 function setupReflectionModal(id) {
   const modal = document.getElementById('reflectionModal-' + id);
-  if (modal.dataset.initialized) return;
+  const form = document.getElementById('reflection-form-' + id);
+  const saveBtn = document.getElementById('reflection-save-' + id);
+  const feedbackBtn = document.getElementById('get-reflection-feedback-' + id);
+  const feedbackBox = document.getElementById('reflection-ai-feedback-' + id);
 
-  const goals = parseData('goals-data-' + id) || [];
-  const steps = parseData('steps-data-' + id) || [];
-  const strategies = parseData('strategies-data-' + id) || [];
-  const savedGA = parseData('goal-achievement-data-' + id) || [];
-  const savedSE = parseData('strategy-evaluation-data-' + id) || [];
+  if (!modal.dataset.initialized) {
+    const goals = parseData('goals-data-' + id) || [];
+    const steps = parseData('steps-data-' + id) || [];
+    const strategies = parseData('strategies-data-' + id) || [];
+    const savedGA = parseData('goal-achievement-data-' + id) || [];
+    const savedSE = parseData('strategy-evaluation-data-' + id) || [];
 
-  const gaInput = document.getElementById('goal-achievement-' + id);
-  const seInput = document.getElementById('strategy-evaluation-' + id);
-  const gaBody = document.querySelector('#goal-achievement-table-' + id + ' tbody');
-  const seBody = document.querySelector('#strategy-evaluation-table-' + id + ' tbody');
+    const gaInput = document.getElementById('goal-achievement-' + id);
+    const seInput = document.getElementById('strategy-evaluation-' + id);
+    const gaBody = document.querySelector('#goal-achievement-table-' + id + ' tbody');
+    const seBody = document.querySelector('#strategy-evaluation-table-' + id + ' tbody');
 
-  const unplanned = steps.filter(g => !goals.includes(g));
-  const allGoals = goals.concat(unplanned);
+    const learnedSubjectField = document.getElementById('learned-subject-' + id);
+    const learnedWorkField = document.getElementById('learned-work-' + id);
+    const planningRealisticField = document.getElementById('planning-realistic-' + id);
+    const planningDeviationsField = document.getElementById('planning-deviations-' + id);
+    const motivationRatingField = document.getElementById('motivation-rating-' + id);
+    const motivationImproveField = document.getElementById('motivation-improve-' + id);
+    const nextPhaseField = document.getElementById('next-phase-' + id);
+    const strategyOutlookField = document.getElementById('strategy-outlook-' + id);
 
-  const gaData = allGoals.map(g => {
-    const found = savedGA.find(item => item.goal === g) || {};
-    return {
-      goal: g,
-      unplanned: unplanned.includes(g),
-      achievement: found.achievement || '',
-      comment: found.comment || ''
-    };
-  });
+    const unplanned = steps.filter(g => !goals.includes(g));
+    const allGoals = goals.concat(unplanned);
 
-  const seData = strategies.map(s => {
-    const found = savedSE.find(item => item.strategy === s) || {};
-    return {
-      strategy: s,
-      helpful: found.helpful || '',
-      reason: found.reason || '',
-      reuse: found.reuse || ''
-    };
-  });
-
-  function updateHidden() {
-    gaInput.value = JSON.stringify(gaData);
-    seInput.value = JSON.stringify(seData);
-  }
-
-  function renderGoals() {
-    gaBody.innerHTML = '';
-    gaData.forEach((item, i) => {
-      const tr = document.createElement('tr');
-      const tdG = document.createElement('td');
-      tdG.className = 'border px-2 py-1';
-      tdG.textContent = item.goal + (item.unplanned ? ' (ungeplant)' : '');
-      const tdA = document.createElement('td');
-      tdA.className = 'border px-2 py-1 text-center';
-      ['vollständig','teilweise','nicht'].forEach(val => {
-        const label = document.createElement('label');
-        label.className = 'mr-2';
-        const radio = document.createElement('input');
-        radio.type = 'radio';
-        radio.name = 'ga-' + id + '-' + i;
-        radio.value = val;
-        radio.required = true;
-        if (item.achievement === val) radio.checked = true;
-        radio.addEventListener('change', () => { item.achievement = val; updateHidden(); });
-        label.appendChild(radio);
-        label.appendChild(document.createTextNode(val));
-        tdA.appendChild(label);
-      });
-      const tdC = document.createElement('td');
-      tdC.className = 'border px-2 py-1';
-      const ta = document.createElement('textarea');
-      ta.className = 'w-full border rounded p-1';
-      ta.rows = 1;
-      ta.required = true;
-      ta.value = item.comment;
-      ta.addEventListener('input', e => { item.comment = e.target.value; updateHidden(); });
-      tdC.appendChild(ta);
-      tr.appendChild(tdG);
-      tr.appendChild(tdA);
-      tr.appendChild(tdC);
-      gaBody.appendChild(tr);
+    const gaData = allGoals.map(g => {
+      const found = savedGA.find(item => item.goal === g) || {};
+      return {
+        goal: g,
+        unplanned: unplanned.includes(g),
+        achievement: found.achievement || '',
+        comment: found.comment || ''
+      };
     });
-  }
 
-  function renderStrategies() {
-    seBody.innerHTML = '';
-    seData.forEach((item, i) => {
-      const tr = document.createElement('tr');
-      const tdS = document.createElement('td');
-      tdS.className = 'border px-2 py-1';
-      tdS.textContent = item.strategy;
-      const tdH = document.createElement('td');
-      tdH.className = 'border px-2 py-1 text-center';
-      ['ja','teilweise','nein'].forEach(val => {
-        const label = document.createElement('label');
-        label.className = 'mr-2';
-        const radio = document.createElement('input');
-        radio.type = 'radio';
-        radio.name = 'se-help-' + id + '-' + i;
-        radio.value = val;
-        radio.required = true;
-        if (item.helpful === val) radio.checked = true;
-        radio.addEventListener('change', () => { item.helpful = val; updateHidden(); });
-        label.appendChild(radio);
-        label.appendChild(document.createTextNode(val));
-        tdH.appendChild(label);
-      });
-      const tdR = document.createElement('td');
-      tdR.className = 'border px-2 py-1';
-      const inp = document.createElement('input');
-      inp.type = 'text';
-      inp.className = 'w-full border rounded p-1';
-      inp.value = item.reason;
-      inp.addEventListener('input', e => { item.reason = e.target.value; updateHidden(); });
-      tdR.appendChild(inp);
-      const tdU = document.createElement('td');
-      tdU.className = 'border px-2 py-1 text-center';
-      ['ja','nein','vielleicht'].forEach(val => {
-        const label = document.createElement('label');
-        label.className = 'mr-2';
-        const radio = document.createElement('input');
-        radio.type = 'radio';
-        radio.name = 'se-reuse-' + id + '-' + i;
-        radio.value = val;
-        radio.required = true;
-        if (item.reuse === val) radio.checked = true;
-        radio.addEventListener('change', () => { item.reuse = val; updateHidden(); });
-        label.appendChild(radio);
-        label.appendChild(document.createTextNode(val));
-        tdU.appendChild(label);
-      });
-      tr.appendChild(tdS);
-      tr.appendChild(tdH);
-      tr.appendChild(tdR);
-      tr.appendChild(tdU);
-      seBody.appendChild(tr);
+    const seData = strategies.map(s => {
+      const found = savedSE.find(item => item.strategy === s) || {};
+      return {
+        strategy: s,
+        helpful: found.helpful || '',
+        reason: found.reason || '',
+        reuse: found.reuse || ''
+      };
     });
+
+    function updateHidden() {
+      gaInput.value = JSON.stringify(gaData);
+      seInput.value = JSON.stringify(seData);
+    }
+
+    function renderGoals() {
+      gaBody.innerHTML = '';
+      gaData.forEach((item, i) => {
+        const tr = document.createElement('tr');
+        const tdG = document.createElement('td');
+        tdG.className = 'border px-2 py-1';
+        tdG.textContent = item.goal + (item.unplanned ? ' (ungeplant)' : '');
+        const tdA = document.createElement('td');
+        tdA.className = 'border px-2 py-1 text-center';
+        ['vollständig','teilweise','nicht'].forEach(val => {
+          const label = document.createElement('label');
+          label.className = 'mr-2';
+          const radio = document.createElement('input');
+          radio.type = 'radio';
+          radio.name = 'ga-' + id + '-' + i;
+          radio.value = val;
+          radio.required = true;
+          if (item.achievement === val) radio.checked = true;
+          radio.addEventListener('change', () => { item.achievement = val; updateHidden(); });
+          label.appendChild(radio);
+          label.appendChild(document.createTextNode(val));
+          tdA.appendChild(label);
+        });
+        const tdC = document.createElement('td');
+        tdC.className = 'border px-2 py-1';
+        const ta = document.createElement('textarea');
+        ta.className = 'w-full border rounded p-1';
+        ta.rows = 1;
+        ta.required = true;
+        ta.value = item.comment;
+        ta.addEventListener('input', e => { item.comment = e.target.value; updateHidden(); });
+        tdC.appendChild(ta);
+        tr.appendChild(tdG);
+        tr.appendChild(tdA);
+        tr.appendChild(tdC);
+        gaBody.appendChild(tr);
+      });
+    }
+
+    function renderStrategies() {
+      seBody.innerHTML = '';
+      seData.forEach((item, i) => {
+        const tr = document.createElement('tr');
+        const tdS = document.createElement('td');
+        tdS.className = 'border px-2 py-1';
+        tdS.textContent = item.strategy;
+        const tdH = document.createElement('td');
+        tdH.className = 'border px-2 py-1 text-center';
+        ['ja','teilweise','nein'].forEach(val => {
+          const label = document.createElement('label');
+          label.className = 'mr-2';
+          const radio = document.createElement('input');
+          radio.type = 'radio';
+          radio.name = 'se-help-' + id + '-' + i;
+          radio.value = val;
+          radio.required = true;
+          if (item.helpful === val) radio.checked = true;
+          radio.addEventListener('change', () => { item.helpful = val; updateHidden(); });
+          label.appendChild(radio);
+          label.appendChild(document.createTextNode(val));
+          tdH.appendChild(label);
+        });
+        const tdR = document.createElement('td');
+        tdR.className = 'border px-2 py-1';
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.className = 'w-full border rounded p-1';
+        inp.value = item.reason;
+        inp.addEventListener('input', e => { item.reason = e.target.value; updateHidden(); });
+        tdR.appendChild(inp);
+        const tdU = document.createElement('td');
+        tdU.className = 'border px-2 py-1 text-center';
+        ['ja','nein','vielleicht'].forEach(val => {
+          const label = document.createElement('label');
+          label.className = 'mr-2';
+          const radio = document.createElement('input');
+          radio.type = 'radio';
+          radio.name = 'se-reuse-' + id + '-' + i;
+          radio.value = val;
+          radio.required = true;
+          if (item.reuse === val) radio.checked = true;
+          radio.addEventListener('change', () => { item.reuse = val; updateHidden(); });
+          label.appendChild(radio);
+          label.appendChild(document.createTextNode(val));
+          tdU.appendChild(label);
+        });
+        tr.appendChild(tdS);
+        tr.appendChild(tdH);
+        tr.appendChild(tdR);
+        tr.appendChild(tdU);
+        seBody.appendChild(tr);
+      });
+    }
+
+    function getReflectionData() {
+      return {
+        goal_achievement: gaData,
+        strategy_evaluation: seData,
+        learned_subject: learnedSubjectField.value,
+        learned_work: learnedWorkField.value,
+        planning_realistic: planningRealisticField.value,
+        planning_deviations: planningDeviationsField.value,
+        motivation_rating: motivationRatingField.value,
+        motivation_improve: motivationImproveField.value,
+        next_phase: nextPhaseField.value,
+        strategy_outlook: strategyOutlookField.value
+      };
+    }
+
+    feedbackBtn.addEventListener('click', async () => {
+      updateHidden();
+      try {
+        const response = await fetch("{% url 'reflection_feedback' %}", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+          },
+          body: JSON.stringify({ reflection: getReflectionData() })
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          alert(err.error || 'Fehler beim Abrufen des Feedbacks.');
+          return;
+        }
+        const data = await response.json();
+        feedbackBox.textContent = data.feedback;
+        feedbackBox.classList.remove('hidden');
+        saveBtn.disabled = false;
+        feedbackBtn.textContent = 'Feedback aktualisieren';
+      } catch (e) {
+        alert('Fehler beim Abrufen des Feedbacks.');
+      }
+    });
+
+    modal.resetFeedback = function() {
+      feedbackBox.textContent = '';
+      feedbackBox.classList.add('hidden');
+      saveBtn.disabled = true;
+      feedbackBtn.textContent = 'Feedback erhalten';
+      fetch("{% url 'reflection_feedback_reset' %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+      });
+    };
+
+    renderGoals();
+    renderStrategies();
+    updateHidden();
+    modal.dataset.initialized = '1';
   }
 
-  renderGoals();
-  renderStrategies();
-  updateHidden();
-  modal.dataset.initialized = '1';
+  if (modal.resetFeedback) modal.resetFeedback();
 }
 
 function finalizeExecution(id) {
