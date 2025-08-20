@@ -1,11 +1,13 @@
 from functools import wraps
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Student, SRLEntry
+from .models import Student, SRLEntry, AppSettings
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 import json
 from django.urls import reverse
+import requests
+from .export_views import _entry_nested
 from .forms import (
     PseudoForm,
     PasswordLoginForm,
@@ -162,6 +164,7 @@ def create_entry(request):
                 entry = form.save(commit=False)
                 entry.student = student
                 entry.save()
+                request.session.pop("planning_ai_messages", None)
     return redirect("student_dashboard")
 
 
@@ -241,6 +244,7 @@ def create_entry_json(request):
         entry = form.save(commit=False)
         entry.student = student
         entry.save()
+        request.session.pop("planning_ai_messages", None)
         return JsonResponse({"entry_id": entry.id})
     return JsonResponse({"errors": form.errors}, status=400)
 
@@ -330,3 +334,105 @@ def add_reflection_json(request, entry_id):
         form.save()
         return JsonResponse({"status": "ok"})
     return JsonResponse({"errors": form.errors}, status=400)
+
+
+@student_required
+@require_POST
+def planning_feedback(request):
+    student = Student.objects.get(id=request.session["student_id"])
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    planning = payload.get("planning", {})
+    entries = student.entries.order_by("session_date")
+    diary = {
+        "Gesamtziel": student.overall_goal,
+        "Fälligkeitsdatum des Gesamtziels": student.overall_goal_due_date.isoformat()
+        if student.overall_goal_due_date
+        else None,
+        "Einträge": [_entry_nested(e) for e in entries],
+    }
+
+    base_prompt = (
+        "Rolle des KI-Assistenten:\n"
+        "Du bist ein Lerncoach, der einen Schüler während einer mehrwöchigen Projektarbeit unterstützt. "
+        "Der Schüler führt ein selbstreguliertes Lerntagebuch, in dem er seine Lernprozesse dokumentiert. "
+        "Deine Aufgabe ist es, konstruktives, wissenschaftlich fundiertes Feedback zu seiner aktuellen Planung zu geben, "
+        "um ihn bei der Entwicklung von Selbstregulationsfähigkeiten zu unterstützen.\n"
+        "Eingabedaten:\n"
+        f"-> Das derzeitige SRL Tagebuch: {json.dumps(diary, ensure_ascii=False)}\n"
+        f"-> Der aktuelle Planungsentwurf des Schülers {json.dumps(planning, ensure_ascii=False)}\n"
+        "Hinweise:\n"
+        "Das Lerntagebuch kann auch leer sein (falls dies der erste Eintrag ist).\n"
+        "Die Planung enthält Ziele, Prioritäten (Reihenfolge der Ziele in der sie bearbeitet werden sollen + Markierung besonders wichtiger Ziele), Strategien, Ressourcen, Zeitplanung (wie viel Zeit pro Ziel eingeplant wurde) und Erwartungen (Erwartungen geben an, woran der Schüler festlegt dass das Ziel erreicht wurde).\n"
+        "Aufgabe des KI-Assistenten\n"
+        "Analysiere alle vorliegenden Informationen:\n"
+        "Projektkontext (Gesamtziel + Frist)\n"
+        "Vergangene Lerntagebuch-Einträge (falls vorhanden → Rückbezug auf Erfahrungen, erfolgreiche oder problematische Strategien)\n"
+        "Aktuelle Planung (Ziele, Prioritäten, Strategien, Ressourcen, Zeitplanung, Erfolgskriterien)\n"
+        "Regeln für dein Feedback (wissenschaftlich gestützt)\n"
+        "Autonomie-Support (Selbstbestimmungstheorie)\n"
+        "Gib keine fertigen Lösungen vor.\n"
+        "Stelle reflektierende Fragen („Wie realistisch ist dein Zeitplan im Vergleich zu früher?“) und biete Optionen statt Anweisungen.\n"
+        "Informativ, nicht wertend\n"
+        "Kein einfaches „gut“ oder „schlecht“.\n"
+        "Stattdessen sachliche Rückmeldung mit Verbesserungsvorschlägen („Dein Ziel ist klar formuliert – vielleicht könntest du noch konkretisieren, wie du den Fortschritt überprüfst“).\n"
+        "Ressourcen- und Stärkenorientierung\n"
+        "Betone positive Elemente („Du hast dir mehrere Strategien notiert – das zeigt, dass du vorbereitet bist“).\n"
+        "Gib Hinweise, wie vorhandene Ressourcen sinnvoller eingesetzt werden können.\n"
+        "Metakognition anregen\n"
+        "Stelle Fragen, die den Schüler zum Nachdenken über seine eigenen Entscheidungen bringen („Welche dieser Strategien hat dir in der Vergangenheit am meisten geholfen?“).\n"
+        "Realistische Planung prüfen\n"
+        "Prüfe, ob Zeitaufwand und Strategien im Verhältnis zum Gesamtziel stehen.\n"
+        "Hebe Widersprüche oder Überlastung hervor („Du hast 3 Tage für Recherche eingeplant, aber noch 4 Wochen bis zur Abgabe – wäre eine Verteilung sinnvoll?“).\n"
+        "Verknüpfung mit der Vergangenheit\n"
+        "Falls es Tagebuch-Einträge gibt: beziehe dich aktiv auf sie („Beim letzten Mal hast du geschrieben, dass dich Ablenkungen gestört haben – wie berücksichtigst du das diesmal in deiner Planung?“).\n"
+        "Förderung von Reflexion und Anpassung\n"
+        "Fordere den Schüler am Ende des Feedbacks auf, seine Planung bei Bedarf selbstständig zu überarbeiten.\n"
+        "Erwartete Ausgabe\n"
+        "Formuliere dein Feedback als klar verständlichen Fließtext mit folgenden Komponenten:\n"
+        "Kurze positive Würdigung der aktuellen Planung.\n"
+        "Konkret-informative Rückmeldungen zu den Bereichen Ziele, Strategien, Ressourcen, Zeitplanung und Erfolgskriterien.\n"
+        "Reflektierende Fragen, die den Schüler zum Überarbeiten anregen.\n"
+        "Abschließende Bestärkung, dass der Schüler durch kleine Anpassungen noch besser sein Ziel erreichen kann."
+    )
+
+    messages = request.session.get("planning_ai_messages")
+    if not messages:
+        messages = [{"role": "user", "content": base_prompt}]
+    else:
+        followup = (
+            "Der Schüler hat nun einen zweiten Entwurf eingereicht "
+            f"{json.dumps(planning, ensure_ascii=False)} "
+            "gebe erneut Feedback nach den gleichen Richtlinien wie zuvor. Hebe dabei positive Veränderungen der Planung seit der letzten Version hervor."
+        )
+        messages.append({"role": "user", "content": followup})
+
+    settings = AppSettings.load()
+    if not settings.openai_api_key:
+        return JsonResponse({"error": "Kein OpenAI API Key hinterlegt."}, status=400)
+
+    try:
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {settings.openai_api_key}"},
+            json={"model": "gpt-4o-mini", "messages": messages},
+            timeout=30,
+        )
+        response.raise_for_status()
+        reply = response.json()["choices"][0]["message"]["content"]
+    except requests.RequestException:
+        return JsonResponse({"error": "Fehler bei der Verbindung zur OpenAI API."}, status=500)
+
+    messages.append({"role": "assistant", "content": reply})
+    request.session["planning_ai_messages"] = messages
+    return JsonResponse({"feedback": reply})
+
+
+@student_required
+@require_POST
+def reset_planning_feedback(request):
+    request.session.pop("planning_ai_messages", None)
+    return JsonResponse({"status": "ok"})
