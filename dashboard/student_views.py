@@ -452,6 +452,10 @@ def reflection_feedback(request):
     reflection = payload.get("reflection", {})
     entry_id = payload.get("entry_id")
     try:
+        entry_id = int(entry_id)
+    except (TypeError, ValueError):
+        return JsonResponse({"error": "Ungültige Eintrags-ID"}, status=400)
+    try:
         entry = student.entries.get(id=entry_id)
     except SRLEntry.DoesNotExist:
         return JsonResponse({"error": "Ungültiger Eintrag"}, status=404)
