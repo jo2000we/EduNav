@@ -29,4 +29,14 @@ urlpatterns = [
         student_views.add_reflection_json,
         name="student_entry_reflection_json",
     ),
+    path(
+        "api/planning/feedback/",
+        student_views.planning_feedback,
+        name="planning_feedback",
+    ),
+    path(
+        "api/planning/feedback/reset/",
+        student_views.reset_planning_feedback,
+        name="planning_feedback_reset",
+    ),
 ]
