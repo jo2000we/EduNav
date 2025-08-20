@@ -244,3 +244,25 @@ def test_reflection_feedback_invalid_entry_returns_404(client):
         content_type="application/json",
     )
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_reflection_feedback_invalid_student_returns_404(client):
+    teacher = User.objects.create_user(username="t1", password="pass")
+    classroom = Classroom.objects.create(
+        teacher=teacher,
+        name="Klasse A",
+        group_type="CONTROL",
+    )
+    # create a student but use a different id in session to simulate missing student
+    Student.objects.create(classroom=classroom, pseudonym="S1")
+    session = client.session
+    session["student_id"] = 999  # nonexistent student id
+    session.save()
+
+    response = client.post(
+        reverse("reflection_feedback"),
+        data=json.dumps({"reflection": {}, "entry_id": 1}),
+        content_type="application/json",
+    )
+    assert response.status_code == 404

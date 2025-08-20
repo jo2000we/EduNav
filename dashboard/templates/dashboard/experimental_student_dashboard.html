@@ -931,6 +931,7 @@ function setupReflectionModal(id) {
   function resetFeedback() {
     feedbackBox.textContent = '';
     feedbackBox.classList.add('hidden');
+    feedbackBox.classList.remove('text-red-600');
     saveBtn.disabled = true;
     feedbackBtn.textContent = 'Feedback erhalten';
     fetch("{% url 'reflection_feedback_reset' %}", {
@@ -953,7 +954,9 @@ function setupReflectionModal(id) {
       });
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        alert(err.error || 'Fehler beim Abrufen des Feedbacks.');
+        feedbackBox.textContent = err.error || 'Fehler beim Abrufen des Feedbacks.';
+        feedbackBox.classList.remove('hidden');
+        feedbackBox.classList.add('text-red-600');
         return;
       }
       const data = await response.json();
@@ -962,7 +965,9 @@ function setupReflectionModal(id) {
       saveBtn.disabled = false;
       feedbackBtn.textContent = 'Feedback aktualisieren';
     } catch (e) {
-      alert('Fehler beim Abrufen des Feedbacks.');
+      feedbackBox.textContent = 'Fehler beim Abrufen des Feedbacks.';
+      feedbackBox.classList.remove('hidden');
+      feedbackBox.classList.add('text-red-600');
     }
   });
 
