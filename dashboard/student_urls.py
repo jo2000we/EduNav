@@ -30,6 +30,16 @@ urlpatterns = [
         name="student_entry_reflection_json",
     ),
     path(
+        "api/reflection/feedback/",
+        student_views.reflection_feedback,
+        name="reflection_feedback",
+    ),
+    path(
+        "api/reflection/feedback/reset/",
+        student_views.reset_reflection_feedback,
+        name="reflection_feedback_reset",
+    ),
+    path(
         "api/planning/feedback/",
         student_views.planning_feedback,
         name="planning_feedback",
