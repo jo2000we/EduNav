@@ -444,11 +444,8 @@
               </div>
             </div>
 
-            <div id="reflection-ai-feedback-{{ entry.id }}" class="hidden mb-4 p-2 border rounded bg-gray-50 text-sm"></div>
-
             <div class="flex justify-end space-x-2 mt-4">
-              <button type="button" id="reflection-get-feedback-{{ entry.id }}" class="bg-blue-500 text-white px-4 py-2 rounded">Feedback erhalten</button>
-              <button type="submit" id="reflection-save-{{ entry.id }}" class="bg-green-500 text-white px-4 py-2 rounded" disabled>Speichern</button>
+              <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">Speichern</button>
             </div>
           </form>
         </div>
@@ -908,81 +905,7 @@ function setupReflectionModal(id) {
   renderGoals();
   renderStrategies();
   updateHidden();
-
-  const saveBtn = document.getElementById('reflection-save-' + id);
-  const feedbackBtn = document.getElementById('reflection-get-feedback-' + id);
-  const feedbackBox = document.getElementById('reflection-ai-feedback-' + id);
-
-  function getReflectionData() {
-    return {
-      goal_achievement: gaData,
-      strategy_evaluation: seData,
-      learned_subject: document.getElementById('learned-subject-' + id).value,
-      learned_work: document.getElementById('learned-work-' + id).value,
-      planning_realistic: document.getElementById('planning-realistic-' + id).value,
-      planning_deviations: document.getElementById('planning-deviations-' + id).value,
-      motivation_rating: document.getElementById('motivation-rating-' + id).value,
-      motivation_improve: document.getElementById('motivation-improve-' + id).value,
-      next_phase: document.getElementById('next-phase-' + id).value,
-      strategy_outlook: document.getElementById('strategy-outlook-' + id).value,
-    };
-  }
-
-  function resetFeedback() {
-    feedbackBox.textContent = '';
-    feedbackBox.classList.add('hidden');
-    saveBtn.disabled = true;
-    feedbackBtn.textContent = 'Feedback erhalten';
-    fetch("{% url 'reflection_feedback_reset' %}", {
-      method: 'POST',
-      headers: { 'X-CSRFToken': getCookie('csrftoken') }
-    });
-  }
-  resetFeedback();
-
-  feedbackBtn.addEventListener('click', async () => {
-    updateHidden();
-    try {
-      const response = await fetch("{% url 'reflection_feedback' %}", {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCookie('csrftoken'),
-        },
-        body: JSON.stringify({ reflection: getReflectionData(), entry_id: id })
-      });
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        alert(err.error || 'Fehler beim Abrufen des Feedbacks.');
-        return;
-      }
-      const data = await response.json();
-      feedbackBox.textContent = data.feedback;
-      feedbackBox.classList.remove('hidden');
-      saveBtn.disabled = false;
-      feedbackBtn.textContent = 'Feedback aktualisieren';
-    } catch (e) {
-      alert('Fehler beim Abrufen des Feedbacks.');
-    }
-  });
-
   modal.dataset.initialized = '1';
-}
-
-function resetReflectionFeedback(id) {
-  const box = document.getElementById('reflection-ai-feedback-' + id);
-  if (box) {
-    box.textContent = '';
-    box.classList.add('hidden');
-  }
-  const save = document.getElementById('reflection-save-' + id);
-  if (save) save.disabled = true;
-  const btn = document.getElementById('reflection-get-feedback-' + id);
-  if (btn) btn.textContent = 'Feedback erhalten';
-  fetch("{% url 'reflection_feedback_reset' %}", {
-    method: 'POST',
-    headers: { 'X-CSRFToken': getCookie('csrftoken') }
-  });
 }
 
 function finalizeExecution(id) {
@@ -1001,7 +924,6 @@ function finalizeExecution(id) {
     if (confirm('Wenn du fortfährst, kannst du die Durchführung nicht mehr ändern. Bist du sicher?')) {
       const modal = document.getElementById('reflectionModal-' + id);
       if (modal) {
-        resetReflectionFeedback(id);
         setupReflectionModal(id);
         modal.classList.remove('hidden');
       }
