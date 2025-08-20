@@ -195,7 +195,6 @@ def add_reflection(request, entry_id):
         form = ReflectionForm(request.POST, instance=entry)
         if form.is_valid():
             form.save()
-            request.session.pop("reflection_ai_messages", None)
     return redirect("student_dashboard")
 
 
@@ -333,7 +332,6 @@ def add_reflection_json(request, entry_id):
     form = ReflectionForm(form_data, instance=entry)
     if form.is_valid():
         form.save()
-        request.session.pop("reflection_ai_messages", None)
         return JsonResponse({"status": "ok"})
     return JsonResponse({"errors": form.errors}, status=400)
 
@@ -437,119 +435,4 @@ def planning_feedback(request):
 @require_POST
 def reset_planning_feedback(request):
     request.session.pop("planning_ai_messages", None)
-    return JsonResponse({"status": "ok"})
-
-
-@student_required
-@require_POST
-def reflection_feedback(request):
-    student = Student.objects.get(id=request.session["student_id"])
-    try:
-        payload = json.loads(request.body.decode("utf-8"))
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON"}, status=400)
-
-    reflection = payload.get("reflection", {})
-    entry_id = payload.get("entry_id")
-    try:
-        entry = student.entries.get(id=entry_id)
-    except SRLEntry.DoesNotExist:
-        return JsonResponse({"error": "Ungültiger Eintrag"}, status=404)
-
-    entries = student.entries.order_by("session_date")
-    diary = {
-        "Gesamtziel": student.overall_goal,
-        "Fälligkeitsdatum des Gesamtziels": student.overall_goal_due_date.isoformat()
-        if student.overall_goal_due_date
-        else None,
-        "Einträge": [_entry_nested(e) for e in entries],
-    }
-
-    current = _entry_nested(entry)
-    planning_data = current.get("Planung")
-    execution_data = current.get("Durchführung")
-
-    base_prompt = (
-        "Rolle des KI-Assistenten:\n"
-        "Du bist ein Lerncoach, der einen Schüler während einer mehrwöchigen Projektarbeit unterstützt. "
-        "Der Schüler führt ein selbstreguliertes Lerntagebuch, in dem er seine Lernprozesse dokumentiert. "
-        "Jetzt bewertet der Schüler seine Reflexion zur abgeschlossenen Arbeitsphase. Deine Aufgabe ist es, "
-        "konstruktives, wissenschaftlich fundiertes Feedback zu dieser Reflexion zu geben, um den Schüler bei "
-        "der Entwicklung seiner Selbstregulationsfähigkeiten zu unterstützen.\n"
-        f"-> SRL Tagebuch (der aktuelle Eintrag ist der, wo Planung und Durchführung vorhanden sind, aber Reflexion fehlt und das Datum am aktuellsten ist): {json.dumps(diary, ensure_ascii=False)}\n"
-        f"-> Planung des aktuellen Eintrags: {json.dumps(planning_data, ensure_ascii=False)}\n"
-        f"-> Durchführung des aktuellen Eintrags: {json.dumps(execution_data, ensure_ascii=False)}\n"
-        f"-> Der aktuelle Reflexionsentwurf des Schülers: {json.dumps(reflection, ensure_ascii=False)}\n"
-        "Aufgabe des KI-Assistenten\n"
-        "Analysiere alle vorliegenden Informationen:\n"
-        "Projektkontext (Gesamtziel + Frist)\n"
-        "Bisherige Tagebuch-Einträge und Planung (inkl. geplante Ziele, Strategien, Zeitmanagement)\n"
-        "Aktuelle Reflexion (Zielerreichung, Strategien, Lernen, Zeitmanagement, Motivation, Ausblick)\n"
-        "Beachte besonders: Widersprüche und Inkonsistenzen (z. B. „Zeitplan war realistisch“ vs. „große Abweichungen in der Umsetzung“).\n"
-        "Regeln für dein Feedback (wissenschaftlich gestützt)\n"
-        "Autonomie-Support (Selbstbestimmungstheorie)\n"
-        "Stelle offene, reflektierende Fragen, die den Schüler zum eigenen Nachdenken und Anpassen anregen.\n"
-        "Keine Anweisungen, sondern Impulse: „Wie erklärst du dir…?“, „Welche Alternativen siehst du…?“\n"
-        "Informativ, nicht wertend\n"
-        "Kein einfaches „gut/schlecht“.\n"
-        "Stattdessen sachliche Rückmeldungen mit konkreten Hinweisen: „Du hast deine Motivation als schwankend beschrieben – welche Strategien haben dir trotzdem geholfen, dranzubleiben?“\n"
-        "Ressourcen- und Stärkenorientierung\n"
-        "Anerkenne positive Entwicklungen („Du hast erkannt, dass dir Brainstorming geholfen hat – das zeigt, dass du deine Strategien gut reflektierst“).\n"
-        "Hebe Fortschritte hervor (z. B. verbesserte Planung im Vergleich zum Vorherigen).\n"
-        "Metakognition anregen\n"
-        "Stelle Fragen, die den Schüler dazu bringen, über eigene Denk- und Lernprozesse nachzudenken: „Was bedeutet es für dich, dass eine Strategie teilweise geholfen hat?“\n"
-        "Inkonsistenzen ansprechen\n"
-        "Identifiziere mögliche Widersprüche zwischen Planung, Umsetzung und Reflexion (z. B. „Du hast deine Planung als realistisch eingeschätzt, aber schreibst gleichzeitig, dass du stark vom Plan abgewichen bist – wie passt das für dich zusammen?“).\n"
-        "Stelle Nachfragen, ohne belehrend zu wirken.\n"
-        "Ausblick unterstützen\n"
-        "Hilf dem Schüler, aus seiner Reflexion konkrete nächste Schritte abzuleiten.\n"
-        "Stelle Fragen wie: „Welche deiner beschriebenen Strategien würdest du jetzt priorisieren?“ oder „Wie kannst du deine Motivation gezielt stärken?“\n"
-        "Erwartete Ausgabe\n"
-        "Formuliere dein Feedback als klar verständlichen Fließtext mit den folgenden Abschnitten:\n"
-        "Positives (Würdigung von Fortschritten und gelungenen Reflexionselementen)\n"
-        "Konkret-informative Hinweise (Ziele, Strategien, Zeitmanagement, Motivation, Konsistenz)\n"
-        "Reflektierende Fragen (die den Schüler zum Weiterdenken und Anpassen anregen)\n"
-        "Bestärkung (ermutigendes Fazit: kleine Anpassungen führen zu mehr Selbstregulation)"
-    )
-
-    messages = request.session.get("reflection_ai_messages")
-    if not messages:
-        messages = [{"role": "user", "content": base_prompt}]
-    else:
-        followup = (
-            "Der Schüler hat nun einen zweiten Entwurf eingereicht "
-            f"{json.dumps(reflection, ensure_ascii=False)}. "
-            "Die zugehörige Planung bleibt "
-            f"{json.dumps(planning_data, ensure_ascii=False)} "
-            "und die Durchführung "
-            f"{json.dumps(execution_data, ensure_ascii=False)}. "
-            "Gebe erneut Feedback nach den gleichen Richtlinien wie zuvor. Hebe dabei positive Veränderungen der Reflexion seit der letzten Version hervor."
-        )
-        messages.append({"role": "user", "content": followup})
-
-    settings = AppSettings.load()
-    if not settings.openai_api_key:
-        return JsonResponse({"error": "Kein OpenAI API Key hinterlegt."}, status=400)
-
-    try:
-        response = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers={"Authorization": f"Bearer {settings.openai_api_key}"},
-            json={"model": "gpt-4o-mini", "messages": messages},
-            timeout=30,
-        )
-        response.raise_for_status()
-        reply = response.json()["choices"][0]["message"]["content"]
-    except requests.RequestException:
-        return JsonResponse({"error": "Fehler bei der Verbindung zur OpenAI API."}, status=500)
-
-    messages.append({"role": "assistant", "content": reply})
-    request.session["reflection_ai_messages"] = messages
-    return JsonResponse({"feedback": reply})
-
-
-@student_required
-@require_POST
-def reset_reflection_feedback(request):
-    request.session.pop("reflection_ai_messages", None)
     return JsonResponse({"status": "ok"})
