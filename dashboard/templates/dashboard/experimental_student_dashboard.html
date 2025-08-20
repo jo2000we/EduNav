@@ -444,8 +444,11 @@
               </div>
             </div>
 
+            <div id="ai-feedback-reflection-{{ entry.id }}" class="hidden mb-4 p-2 border rounded bg-gray-50 text-sm"></div>
+
             <div class="flex justify-end space-x-2 mt-4">
-              <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">Speichern</button>
+              <button type="button" id="get-reflection-feedback-{{ entry.id }}" class="bg-blue-500 text-white px-4 py-2 rounded">Feedback erhalten</button>
+              <button type="submit" id="reflection-save-{{ entry.id }}" class="bg-green-500 text-white px-4 py-2 rounded" disabled>Speichern</button>
             </div>
           </form>
         </div>
@@ -767,6 +770,22 @@ function setupExecutionModal(id) {
 
 function setupReflectionModal(id) {
   const modal = document.getElementById('reflectionModal-' + id);
+  const saveBtn = document.getElementById('reflection-save-' + id);
+  const feedbackBtn = document.getElementById('get-reflection-feedback-' + id);
+  const feedbackBox = document.getElementById('ai-feedback-reflection-' + id);
+
+  function resetFeedback() {
+    feedbackBox.textContent = '';
+    feedbackBox.classList.add('hidden');
+    saveBtn.disabled = true;
+    feedbackBtn.textContent = 'Feedback erhalten';
+    fetch("{% url 'reflection_feedback_reset' %}", {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    });
+  }
+
+  resetFeedback();
   if (modal.dataset.initialized) return;
 
   const goals = parseData('goals-data-' + id) || [];
@@ -806,6 +825,21 @@ function setupReflectionModal(id) {
   function updateHidden() {
     gaInput.value = JSON.stringify(gaData);
     seInput.value = JSON.stringify(seData);
+  }
+
+  function getReflectionData() {
+    return {
+      goal_achievement: gaData,
+      strategy_evaluation: seData,
+      learned_subject: document.getElementById('learned-subject-' + id)?.value || '',
+      learned_work: document.getElementById('learned-work-' + id)?.value || '',
+      planning_realistic: document.getElementById('planning-realistic-' + id)?.value || '',
+      planning_deviations: document.getElementById('planning-deviations-' + id)?.value || '',
+      motivation_rating: document.getElementById('motivation-rating-' + id)?.value || '',
+      motivation_improve: document.getElementById('motivation-improve-' + id)?.value || '',
+      next_phase: document.getElementById('next-phase-' + id)?.value || '',
+      strategy_outlook: document.getElementById('strategy-outlook-' + id)?.value || ''
+    };
   }
 
   function renderGoals() {
@@ -901,6 +935,32 @@ function setupReflectionModal(id) {
       seBody.appendChild(tr);
     });
   }
+
+  feedbackBtn.addEventListener('click', async () => {
+    updateHidden();
+    try {
+      const response = await fetch("{% url 'reflection_feedback' %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({ reflection: getReflectionData() })
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        alert(err.error || 'Fehler beim Abrufen des Feedbacks.');
+        return;
+      }
+      const data = await response.json();
+      feedbackBox.textContent = data.feedback;
+      feedbackBox.classList.remove('hidden');
+      saveBtn.disabled = false;
+      feedbackBtn.textContent = 'Feedback aktualisieren';
+    } catch (e) {
+      alert('Fehler beim Abrufen des Feedbacks.');
+    }
+  });
 
   renderGoals();
   renderStrategies();
