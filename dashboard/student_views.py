@@ -443,7 +443,14 @@ def reset_planning_feedback(request):
 @student_required
 @require_POST
 def reflection_feedback(request):
-    student = Student.objects.get(id=request.session["student_id"])
+    student_id = request.session.get("student_id")
+    if student_id is None:
+        return JsonResponse({"error": "Ungültiger Student"}, status=400)
+    try:
+        student = Student.objects.get(id=student_id)
+    except Student.DoesNotExist:
+        return JsonResponse({"error": "Ungültiger Student"}, status=404)
+
     try:
         payload = json.loads(request.body.decode("utf-8"))
     except json.JSONDecodeError:
