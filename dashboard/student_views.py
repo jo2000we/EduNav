@@ -450,17 +450,10 @@ def reflection_feedback(request):
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
     reflection = payload.get("reflection", {})
-    entry_id = payload.get("entry_id")
-    try:
-        entry_id = int(entry_id)
-    except (TypeError, ValueError):
-        return JsonResponse({"error": "Ungültige Eintrags-ID"}, status=400)
-    try:
-        entry = student.entries.get(id=entry_id)
-    except SRLEntry.DoesNotExist:
-        return JsonResponse({"error": "Ungültiger Eintrag"}, status=404)
-
     entries = student.entries.order_by("session_date")
+    entry = entries.last()
+    if not entry:
+        return JsonResponse({"error": "Kein Eintrag vorhanden"}, status=404)
     diary = {
         "Gesamtziel": student.overall_goal,
         "Fälligkeitsdatum des Gesamtziels": student.overall_goal_due_date.isoformat()
