@@ -1,8 +1,9 @@
 import json
 import pytest
+import requests
 from django.urls import reverse
 from django.contrib.auth.models import User
-from dashboard.models import Classroom, Student, SRLEntry
+from dashboard.models import Classroom, Student, SRLEntry, AppSettings
 
 
 @pytest.mark.django_db
@@ -205,7 +206,7 @@ def test_execution_time_usage_only_checked(client):
 
 
 @pytest.mark.django_db
-def test_reflection_feedback_missing_entry_id_returns_400(client):
+def test_reflection_feedback_no_entries_returns_404(client):
     teacher = User.objects.create_user(username="t1", password="pass")
     classroom = Classroom.objects.create(
         teacher=teacher,
@@ -222,11 +223,11 @@ def test_reflection_feedback_missing_entry_id_returns_400(client):
         data=json.dumps({"reflection": {}}),
         content_type="application/json",
     )
-    assert response.status_code == 400
+    assert response.status_code == 404
 
 
 @pytest.mark.django_db
-def test_reflection_feedback_invalid_entry_returns_404(client):
+def test_reflection_feedback_uses_latest_entry(client, monkeypatch):
     teacher = User.objects.create_user(username="t1", password="pass")
     classroom = Classroom.objects.create(
         teacher=teacher,
@@ -234,13 +235,29 @@ def test_reflection_feedback_invalid_entry_returns_404(client):
         group_type="CONTROL",
     )
     student = Student.objects.create(classroom=classroom, pseudonym="S1")
+    SRLEntry.objects.create(student=student)
+    settings = AppSettings.load()
+    settings.openai_api_key = "test"
+    settings.save()
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        class Resp:
+            def json(self):
+                return {"choices": [{"message": {"content": "ok"}}]}
+
+            def raise_for_status(self):
+                pass
+
+        return Resp()
+
+    monkeypatch.setattr(requests, "post", fake_post)
     session = client.session
     session["student_id"] = student.id
     session.save()
 
     response = client.post(
         reverse("reflection_feedback"),
-        data=json.dumps({"reflection": {}, "entry_id": 999}),
+        data=json.dumps({"reflection": {}}),
         content_type="application/json",
     )
-    assert response.status_code == 404
+    assert response.status_code == 200
