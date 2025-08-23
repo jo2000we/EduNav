@@ -1,6 +1,6 @@
 import pytest
 from django.contrib.auth.models import User
-from dashboard.models import Classroom, Student
+from dashboard.models import Classroom, Student, AppSettings
 
 
 @pytest.mark.django_db
@@ -27,3 +27,9 @@ def test_classroom_entry_limits_defaults():
     )
     assert classroom.max_entries_per_day == 1
     assert classroom.max_entries_per_week == 1
+
+
+@pytest.mark.django_db
+def test_appsettings_default_openai_model():
+    settings = AppSettings.load()
+    assert settings.openai_model == "gpt-4o-mini"

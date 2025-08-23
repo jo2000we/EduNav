@@ -57,4 +57,5 @@ urlpatterns = [
     ),
     path("settings/", views.settings_view, name="settings"),
     path("settings/openai-key/", views.update_openai_key, name="update_openai_key"),
+    path("settings/openai-model/", views.update_openai_model, name="update_openai_model"),
 ]

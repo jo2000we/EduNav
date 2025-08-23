@@ -15,6 +15,12 @@
             <span id="api-key-status" class="w-4 h-4 rounded-full ml-2 {% if key_valid %}bg-green-500{% else %}bg-red-500{% endif %}"></span>
         </div>
     </div>
+    <div>
+        <h2 class="text-xl font-semibold mb-2">OpenAI Modell</h2>
+        <div class="flex items-center">
+            <input type="text" id="openai_model" value="{{ settings.openai_model }}" class="border p-2 flex-grow" placeholder="OpenAI Modell">
+        </div>
+    </div>
 </div>
 
 <script>
@@ -50,6 +56,22 @@ input.addEventListener('input', function() {
         .then(data => {
             status.classList.remove('bg-red-500', 'bg-green-500');
             status.classList.add(data.valid ? 'bg-green-500' : 'bg-red-500');
+        });
+    }, 500);
+});
+
+const modelInput = document.getElementById('openai_model');
+let modelTimeout = null;
+modelInput.addEventListener('input', function() {
+    clearTimeout(modelTimeout);
+    modelTimeout = setTimeout(() => {
+        fetch("{% url 'update_openai_model' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({openai_model: modelInput.value})
         });
     }, 500);
 });
