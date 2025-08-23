@@ -418,7 +418,7 @@ def planning_feedback(request):
         response = requests.post(
             "https://api.openai.com/v1/chat/completions",
             headers={"Authorization": f"Bearer {settings.openai_api_key}"},
-            json={"model": "gpt-4o-mini", "messages": messages},
+            json={"model": settings.openai_model, "messages": messages},
             timeout=30,
         )
         response.raise_for_status()
@@ -518,7 +518,7 @@ def reflection_feedback(request):
         response = requests.post(
             "https://api.openai.com/v1/chat/completions",
             headers={"Authorization": f"Bearer {settings.openai_api_key}"},
-            json={"model": "gpt-4o-mini", "messages": messages},
+            json={"model": settings.openai_model, "messages": messages},
             timeout=30,
         )
         response.raise_for_status()

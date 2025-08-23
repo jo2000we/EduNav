@@ -242,3 +242,14 @@ def update_openai_key(request):
     settings.save()
     valid = validate_openai_key(key)
     return JsonResponse({"valid": valid})
+
+
+@login_required
+@require_POST
+def update_openai_model(request):
+    data = json.loads(request.body.decode("utf-8"))
+    model = data.get("openai_model") or "gpt-4o-mini"
+    settings = AppSettings.load()
+    settings.openai_model = model
+    settings.save()
+    return JsonResponse({})

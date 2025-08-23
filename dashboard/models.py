@@ -133,11 +133,15 @@ class AppSettings(models.Model):
     """Singleton model to store application wide configuration."""
 
     openai_api_key = models.CharField(max_length=255, blank=True, default="")
+    openai_model = models.CharField(max_length=100, default="gpt-4o-mini")
     updated_at = models.DateTimeField(auto_now=True)
 
     @classmethod
     def load(cls):
         obj, _ = cls.objects.get_or_create(pk=1)
+        if not obj.openai_model:
+            obj.openai_model = "gpt-4o-mini"
+            obj.save(update_fields=["openai_model"])
         return obj
 
     def __str__(self):

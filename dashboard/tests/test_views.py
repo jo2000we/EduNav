@@ -2,7 +2,7 @@ import json
 import pytest
 from django.urls import reverse
 from django.contrib.auth.models import User
-from dashboard.models import Classroom, Student, SRLEntry
+from dashboard.models import Classroom, Student, SRLEntry, AppSettings
 
 
 @pytest.mark.django_db
@@ -32,6 +32,18 @@ def test_settings_accessible_for_teacher(client):
     client.login(username="t1", password="pass")
     response = client.get(reverse("settings"))
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_update_openai_model(client):
+    user = User.objects.create_user(username="t1", password="pass")
+    client.login(username="t1", password="pass")
+    url = reverse("update_openai_model")
+    response = client.post(url, data=json.dumps({"openai_model": "gpt-4.1"}), content_type="application/json")
+    assert response.status_code == 200
+    assert AppSettings.load().openai_model == "gpt-4.1"
+    response = client.post(url, data=json.dumps({"openai_model": ""}), content_type="application/json")
+    assert AppSettings.load().openai_model == "gpt-4o-mini"
 
 
 @pytest.mark.django_db
