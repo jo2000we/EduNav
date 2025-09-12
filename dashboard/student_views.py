@@ -1,7 +1,13 @@
 from functools import wraps
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Student, SRLEntry, AppSettings
+from .models import (
+    Student,
+    SRLEntry,
+    AppSettings,
+    ExperimentalPlanningChange,
+    ExperimentalReflectionChange,
+)
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 import json
@@ -164,6 +170,21 @@ def create_entry(request):
                 entry = form.save(commit=False)
                 entry.student = student
                 entry.save()
+                changes_json = request.POST.get("planning_changes", "")
+                if changes_json:
+                    try:
+                        changes = json.loads(changes_json)
+                    except json.JSONDecodeError:
+                        changes = {}
+                    ExperimentalPlanningChange.objects.create(
+                        entry=entry,
+                        goals=changes.get("goals", False),
+                        priorities=changes.get("priorities", False),
+                        strategies=changes.get("strategies", False),
+                        resources=changes.get("resources", False),
+                        time_planning=changes.get("time_planning", False),
+                        expectations=changes.get("expectations", False),
+                    )
                 request.session.pop("planning_ai_messages", None)
     return redirect("student_dashboard")
 
@@ -195,6 +216,25 @@ def add_reflection(request, entry_id):
         form = ReflectionForm(request.POST, instance=entry)
         if form.is_valid():
             form.save()
+            changes_json = request.POST.get("reflection_changes", "")
+            if changes_json:
+                try:
+                    changes = json.loads(changes_json)
+                except json.JSONDecodeError:
+                    changes = {}
+                ExperimentalReflectionChange.objects.create(
+                    entry=entry,
+                    goal_achievement=changes.get("goal_achievement", False),
+                    strategy_evaluation=changes.get("strategy_evaluation", False),
+                    learned_subject=changes.get("learned_subject", False),
+                    learned_work=changes.get("learned_work", False),
+                    planning_realistic=changes.get("planning_realistic", False),
+                    planning_deviations=changes.get("planning_deviations", False),
+                    motivation_rating=changes.get("motivation_rating", False),
+                    motivation_improve=changes.get("motivation_improve", False),
+                    next_phase=changes.get("next_phase", False),
+                    strategy_outlook=changes.get("strategy_outlook", False),
+                )
     return redirect("student_dashboard")
 
 

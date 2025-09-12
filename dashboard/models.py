@@ -129,6 +129,36 @@ class SRLEntry(models.Model):
         return f"{self.student.pseudonym}: {self.session_date}"
 
 
+class ExperimentalPlanningChange(models.Model):
+    entry = models.ForeignKey(
+        SRLEntry, related_name="planning_changes", on_delete=models.CASCADE
+    )
+    goals = models.BooleanField(default=False)
+    priorities = models.BooleanField(default=False)
+    strategies = models.BooleanField(default=False)
+    resources = models.BooleanField(default=False)
+    time_planning = models.BooleanField(default=False)
+    expectations = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class ExperimentalReflectionChange(models.Model):
+    entry = models.ForeignKey(
+        SRLEntry, related_name="reflection_changes", on_delete=models.CASCADE
+    )
+    goal_achievement = models.BooleanField(default=False)
+    strategy_evaluation = models.BooleanField(default=False)
+    learned_subject = models.BooleanField(default=False)
+    learned_work = models.BooleanField(default=False)
+    planning_realistic = models.BooleanField(default=False)
+    planning_deviations = models.BooleanField(default=False)
+    motivation_rating = models.BooleanField(default=False)
+    motivation_improve = models.BooleanField(default=False)
+    next_phase = models.BooleanField(default=False)
+    strategy_outlook = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
 class AppSettings(models.Model):
     """Singleton model to store application wide configuration."""
 

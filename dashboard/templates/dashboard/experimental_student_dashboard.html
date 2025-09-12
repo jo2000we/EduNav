@@ -358,6 +358,7 @@
             {% csrf_token %}
             <input type="hidden" name="goal_achievement" id="goal-achievement-{{ entry.id }}">
             <input type="hidden" name="strategy_evaluation" id="strategy-evaluation-{{ entry.id }}">
+            <input type="hidden" name="reflection_changes" id="reflection-changes-{{ entry.id }}">
             <div class="section">
               <h4 class="font-semibold mb-2">Habe ich meine Ziele erreicht? (vollständig / teilweise / nicht)</h4>
               <table class="w-full text-left border" id="goal-achievement-table-{{ entry.id }}">
@@ -479,6 +480,7 @@
           {{ planning_form.resources }}
           {{ planning_form.time_planning }}
           {{ planning_form.expectations }}
+          <input type="hidden" name="planning_changes" id="planning-changes">
 
           <div class="section">
             <label class="block mb-2">Ziele: Was will ich heute / diese Woche erreichen? (fachliche Ziele, Teilaufgaben, persönliche Lernziele)</label>
@@ -783,12 +785,18 @@ function setupReflectionModal(id) {
   const saveBtn = document.getElementById('reflection-save-' + id);
   const feedbackBtn = document.getElementById('get-reflection-feedback-' + id);
   const feedbackBox = document.getElementById('ai-feedback-reflection-' + id);
+  const form = document.getElementById('reflection-form-' + id);
+  const changesInput = document.getElementById('reflection-changes-' + id);
+  let lastFeedbackData = null;
 
   function resetFeedback() {
     feedbackBox.textContent = '';
     feedbackBox.classList.add('hidden');
     saveBtn.disabled = true;
     feedbackBtn.textContent = 'Feedback erhalten';
+    feedbackBtn.disabled = false;
+    lastFeedbackData = null;
+    if (changesInput) changesInput.value = '';
     fetch("{% url 'reflection_feedback_reset' %}", {
       method: 'POST',
       headers: { 'X-CSRFToken': getCookie('csrftoken') }
@@ -948,6 +956,7 @@ function setupReflectionModal(id) {
 
   feedbackBtn.addEventListener('click', async () => {
     updateHidden();
+    feedbackBtn.disabled = true;
     try {
       const response = await fetch("{% url 'reflection_feedback' %}", {
         method: 'POST',
@@ -960,6 +969,7 @@ function setupReflectionModal(id) {
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
         alert(err.error || 'Fehler beim Abrufen des Feedbacks.');
+        feedbackBtn.disabled = false;
         return;
       }
       const data = await response.json();
@@ -967,14 +977,34 @@ function setupReflectionModal(id) {
       feedbackBox.classList.remove('hidden');
       saveBtn.disabled = false;
       feedbackBtn.textContent = 'Feedback aktualisieren';
+      lastFeedbackData = getReflectionData();
     } catch (e) {
       alert('Fehler beim Abrufen des Feedbacks.');
     }
+    feedbackBtn.disabled = false;
   });
 
   renderGoals();
   renderStrategies();
   updateHidden();
+  form.addEventListener('submit', () => {
+    if (lastFeedbackData) {
+      const current = getReflectionData();
+      const changes = {
+        goal_achievement: JSON.stringify(current.goal_achievement) !== JSON.stringify(lastFeedbackData.goal_achievement),
+        strategy_evaluation: JSON.stringify(current.strategy_evaluation) !== JSON.stringify(lastFeedbackData.strategy_evaluation),
+        learned_subject: current.learned_subject !== lastFeedbackData.learned_subject,
+        learned_work: current.learned_work !== lastFeedbackData.learned_work,
+        planning_realistic: current.planning_realistic !== lastFeedbackData.planning_realistic,
+        planning_deviations: current.planning_deviations !== lastFeedbackData.planning_deviations,
+        motivation_rating: current.motivation_rating !== lastFeedbackData.motivation_rating,
+        motivation_improve: current.motivation_improve !== lastFeedbackData.motivation_improve,
+        next_phase: current.next_phase !== lastFeedbackData.next_phase,
+        strategy_outlook: current.strategy_outlook !== lastFeedbackData.strategy_outlook,
+      };
+      if (changesInput) changesInput.value = JSON.stringify(changes);
+    }
+  });
   modal.dataset.initialized = '1';
 }
 
@@ -1018,6 +1048,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const saveBtn = document.getElementById('planning-save');
   const feedbackBtn = document.getElementById('get-feedback');
   const feedbackBox = document.getElementById('ai-feedback');
+  const changesInput = document.getElementById('planning-changes');
+  let lastFeedbackData = null;
 
   function getPlanningData() {
     return {
@@ -1035,6 +1067,9 @@ document.addEventListener('DOMContentLoaded', function() {
     feedbackBox.classList.add('hidden');
     saveBtn.disabled = true;
     feedbackBtn.textContent = 'Feedback erhalten';
+    feedbackBtn.disabled = false;
+    lastFeedbackData = null;
+    if (changesInput) changesInput.value = '';
     fetch("{% url 'planning_feedback_reset' %}", {
       method: 'POST',
       headers: { 'X-CSRFToken': getCookie('csrftoken') }
@@ -1314,6 +1349,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   feedbackBtn.addEventListener('click', async () => {
     updateHidden();
+    feedbackBtn.disabled = true;
     try {
       const response = await fetch("{% url 'planning_feedback' %}", {
         method: 'POST',
@@ -1326,6 +1362,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
         alert(err.error || 'Fehler beim Abrufen des Feedbacks.');
+        feedbackBtn.disabled = false;
         return;
       }
       const data = await response.json();
@@ -1333,13 +1370,27 @@ document.addEventListener('DOMContentLoaded', function() {
       feedbackBox.classList.remove('hidden');
       saveBtn.disabled = false;
       feedbackBtn.textContent = 'Feedback aktualisieren';
+      lastFeedbackData = getPlanningData();
     } catch (e) {
       alert('Fehler beim Abrufen des Feedbacks.');
     }
+    feedbackBtn.disabled = false;
   });
 
   document.getElementById('planning-form').addEventListener('submit', (e) => {
     updateHidden();
+    if (lastFeedbackData) {
+      const current = getPlanningData();
+      const changes = {
+        goals: JSON.stringify(current.goals) !== JSON.stringify(lastFeedbackData.goals),
+        priorities: JSON.stringify(current.priorities) !== JSON.stringify(lastFeedbackData.priorities),
+        strategies: JSON.stringify(current.strategies) !== JSON.stringify(lastFeedbackData.strategies),
+        resources: JSON.stringify(current.resources) !== JSON.stringify(lastFeedbackData.resources),
+        time_planning: JSON.stringify(current.time_planning) !== JSON.stringify(lastFeedbackData.time_planning),
+        expectations: JSON.stringify(current.expectations) !== JSON.stringify(lastFeedbackData.expectations),
+      };
+      if (changesInput) changesInput.value = JSON.stringify(changes);
+    }
     const missing = [];
     if (!goals.length) missing.push('Mindestens ein Ziel');
     if (!priorities.some(p => p.priority)) missing.push('Mindestens eine Priorität');
