@@ -977,7 +977,7 @@ function setupReflectionModal(id) {
       feedbackBox.classList.remove('hidden');
       saveBtn.disabled = false;
       feedbackBtn.textContent = 'Feedback aktualisieren';
-      lastFeedbackData = getReflectionData();
+      lastFeedbackData = JSON.parse(JSON.stringify(getReflectionData()));
     } catch (e) {
       alert('Fehler beim Abrufen des Feedbacks.');
     }
@@ -1370,7 +1370,7 @@ document.addEventListener('DOMContentLoaded', function() {
       feedbackBox.classList.remove('hidden');
       saveBtn.disabled = false;
       feedbackBtn.textContent = 'Feedback aktualisieren';
-      lastFeedbackData = getPlanningData();
+      lastFeedbackData = JSON.parse(JSON.stringify(getPlanningData()));
     } catch (e) {
       alert('Fehler beim Abrufen des Feedbacks.');
     }
