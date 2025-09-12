@@ -396,7 +396,13 @@ def planning_feedback(request):
         "Kurze positive Würdigung der aktuellen Planung.\n"
         "Konkret-informative Rückmeldungen zu den Bereichen Ziele, Strategien, Ressourcen, Zeitplanung und Erfolgskriterien.\n"
         "Reflektierende Fragen, die den Schüler zum Überarbeiten anregen.\n"
-        "Abschließende Bestärkung, dass der Schüler durch kleine Anpassungen noch besser sein Ziel erreichen kann."
+        "Abschließende Bestärkung, dass der Schüler durch kleine Anpassungen noch besser sein Ziel erreichen kann.\n"
+        "Zusätzliche Hinweise für dein Feedback:\n"
+        "- Halte deine Antwort kurz und klar: maximal 4 Abschnitte (Positives, Hinweise, Fragen, Bestärkung) mit jeweils höchstens 2–3 Sätzen.\n"
+        "- Vermeide unnötige Wiederholungen oder lange Erklärungen.\n"
+        "- Wenn der Schüler unsinnige oder nicht zum Projekt passende Ziele angegeben hat (z. B. „Wasser trinken“ oder „eine Stunde schlafen“), dann benenne das direkt und sachlich als unpassend für eine Projektplanung. Gib einen kurzen Hinweis, warum es nicht sinnvoll ist, und fordere den Schüler auf, ein passendes fachliches Ziel zu wählen.\n"
+        "- Sei weiterhin konstruktiv, wissenschaftlich fundiert und respektvoll – aber traue dich, klare Grenzen zu ziehen, wenn etwas nicht zum Lernkontext passt.\n"
+        "- Schreibe dein Feedback bitte vollständig in deutscher Sprache."
     )
 
     messages = request.session.get("planning_ai_messages")
@@ -496,7 +502,14 @@ def reflection_feedback(request):
         "Positives (Würdigung von Fortschritten und gelungenen Reflexionselementen)\n"
         "Konkret-informative Hinweise (Ziele, Strategien, Zeitmanagement, Motivation, Konsistenz)\n"
         "Reflektierende Fragen (die den Schüler zum Weiterdenken und Anpassen anregen)\n"
-        "Bestärkung (ermutigendes Fazit: kleine Anpassungen führen zu mehr Selbstregulation)"
+        "Bestärkung (ermutigendes Fazit: kleine Anpassungen führen zu mehr Selbstregulation)\n"
+        "Zusätzliche Hinweise für dein Feedback:\n"
+        "- Halte deine Antwort kurz und klar: maximal 4 Abschnitte (Positives, Hinweise, Fragen, Bestärkung) mit jeweils höchstens 2–3 Sätzen.\n"
+        "- Vermeide unnötige Wiederholungen oder lange Erklärungen.\n"
+        "- Wenn der Schüler unsinnige oder offensichtlich nicht zum Projekt passende Reflexionen angibt, dann benenne das direkt und sachlich als unpassend. Erkläre kurz, warum es nicht sinnvoll ist, und rege den Schüler an, eine realistischere oder fachlich passende Reflexion vorzunehmen.\n"
+        "- Sei besonders aufmerksam bei Inkonsistenzen zwischen Planung, Durchführung und Reflexion. Sprich diese klar, aber respektvoll an, und stelle gezielte Fragen, die dem Schüler helfen, diese Widersprüche zu erkennen und daraus zu lernen.\n"
+        "- Sei konstruktiv und wissenschaftlich fundiert, aber traue dich, klare Grenzen aufzuzeigen, wenn etwas nicht zum Lernkontext passt.\n"
+        "- Schreibe dein Feedback bitte vollständig in deutscher Sprache."
     )
 
     messages = request.session.get("reflection_ai_messages")
